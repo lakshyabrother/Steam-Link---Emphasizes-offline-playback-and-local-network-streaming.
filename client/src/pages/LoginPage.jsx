@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Film, Lock, User, AlertCircle, ArrowRight } from 'lucide-react';
+import { Film, Lock, User, AlertCircle, ArrowRight, Server, Check, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { getApiBaseUrl, setApiBaseUrl } from '../utils/api';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -9,6 +10,12 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Server URL configuration for remote/Vercel deployments
+  const [showServerConfig, setShowServerConfig] = useState(false);
+  const [serverUrlInput, setServerUrlInput] = useState(() => getApiBaseUrl());
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [testResult, setTestResult] = useState(null);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -16,9 +23,44 @@ export default function LoginPage() {
     try {
       await login(username.trim(), password);
     } catch (err) {
-      setError(err.message || 'Login failed');
+      const msg = err.message || 'Login failed';
+      if (msg.includes('fetch') || msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        setError('Cannot connect to StreamLink server. Ensure your backend is running on your PC or configure your Server URL below.');
+        setShowServerConfig(true);
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestAndSave = async () => {
+    const targetUrl = serverUrlInput.trim().replace(/\/+$/, '');
+    setTestingConnection(true);
+    setTestResult(null);
+
+    const testEndpoint = targetUrl ? `${targetUrl}/api/health` : '/api/health';
+
+    try {
+      const res = await fetch(testEndpoint, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        setApiBaseUrl(targetUrl);
+        setTestResult({
+          type: 'success',
+          message: 'Connected to StreamLink Server successfully!'
+        });
+        setError('');
+      } else {
+        throw new Error(`Server returned status ${res.status}`);
+      }
+    } catch (err) {
+      setTestResult({
+        type: 'error',
+        message: 'Could not connect. Verify your Cloudflare Tunnel URL or start the server on your PC.'
+      });
+    } finally {
+      setTestingConnection(false);
     }
   };
 
@@ -39,7 +81,7 @@ export default function LoginPage() {
 
         {error && (
           <div className="login-error" style={{ marginBottom: '16px' }}>
-            <AlertCircle size={15} />
+            <AlertCircle size={16} style={{ flexShrink: 0 }} />
             <span>{error}</span>
           </div>
         )}
@@ -89,6 +131,75 @@ export default function LoginPage() {
 
         <div className="login-hint">
           Default credentials: <strong style={{ color: '#fff' }}>admin</strong> / <strong style={{ color: '#fff' }}>admin123</strong>
+        </div>
+
+        {/* Server Connection Accordion */}
+        <div className="login-server-config">
+          <button
+            type="button"
+            className="login-server-toggle"
+            onClick={() => setShowServerConfig(!showServerConfig)}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Server size={14} />
+              Server Connection {getApiBaseUrl() ? '(Configured)' : '(Default)'}
+            </span>
+            {showServerConfig ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+
+          {showServerConfig && (
+            <div className="login-server-panel">
+              <label className="login-server-label">
+                Backend Server / Tunnel URL:
+              </label>
+              <div className="login-server-input-row">
+                <input
+                  type="url"
+                  className="login-server-input"
+                  placeholder="https://your-tunnel.trycloudflare.com"
+                  value={serverUrlInput}
+                  onChange={e => setServerUrlInput(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={handleTestAndSave}
+                  disabled={testingConnection}
+                  style={{ padding: '8px 12px', fontSize: '12px', whiteSpace: 'nowrap' }}
+                >
+                  {testingConnection ? (
+                    <RefreshCw size={13} className="spin" />
+                  ) : (
+                    <Check size={13} />
+                  )}
+                  <span>Save</span>
+                </button>
+              </div>
+
+              <div className="login-server-presets">
+                <button
+                  type="button"
+                  className="login-preset-chip"
+                  onClick={() => setServerUrlInput('http://localhost:5050')}
+                >
+                  Localhost (5050)
+                </button>
+                <button
+                  type="button"
+                  className="login-preset-chip"
+                  onClick={() => setServerUrlInput('')}
+                >
+                  Reset to Default
+                </button>
+              </div>
+
+              {testResult && (
+                <div className={`login-server-feedback ${testResult.type}`}>
+                  {testResult.message}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

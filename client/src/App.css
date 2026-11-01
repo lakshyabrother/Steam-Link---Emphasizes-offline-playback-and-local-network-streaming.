@@ -3186,6 +3186,105 @@ label {
   color: var(--text-secondary);
 }
 
+.login-server-config {
+  margin-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 12px;
+}
+
+.login-server-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 6px 4px;
+  transition: color 0.2s ease;
+}
+
+.login-server-toggle:hover {
+  color: var(--text-primary);
+}
+
+.login-server-panel {
+  margin-top: 10px;
+  padding: 12px;
+  background: rgba(18, 20, 29, 0.7);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.login-server-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.login-server-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.login-server-input {
+  flex: 1;
+  font-size: 12px !important;
+  padding: 8px 10px !important;
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  color: #fff !important;
+}
+
+.login-server-presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.login-preset-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.login-preset-chip:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.login-server-feedback {
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-top: 2px;
+}
+
+.login-server-feedback.success {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.login-server-feedback.error {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
 /* ============================================================
    PUBLIC VIEWER — Mobile-First Shared Streaming Interface
    Visual References: Yaart Mobile + Velvet Midnight + Bato Curves
