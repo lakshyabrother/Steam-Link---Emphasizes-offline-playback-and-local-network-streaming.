@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { getApiUrl } from '../utils/api.js';
 import {
   Play, Heart, Clock, HardDrive, MoreVertical,
   Trash2, FolderMinus, Info, Image as ImageIcon, CheckSquare, Square
@@ -112,7 +113,7 @@ export default function MovieCard({
 
         <div className="movie-list-thumb">
           <img
-            src={imgError ? `/api/movies/${movie.id}/poster?fallback=1` : `/api/movies/${movie.id}/poster`}
+            src={getApiUrl(imgError ? `/api/movies/${movie.id}/poster?fallback=1` : `/api/movies/${movie.id}/poster`)}
             alt={movie.clean_title}
             onError={() => setImgError(true)}
             loading="lazy"
@@ -291,7 +292,7 @@ export default function MovieCard({
     >
       <div className="poster-wrapper-3d">
         <img
-          src={imgError ? `/api/movies/${movie.id}/poster?fallback=1` : `/api/movies/${movie.id}/poster`}
+          src={getApiUrl(imgError ? `/api/movies/${movie.id}/poster?fallback=1` : `/api/movies/${movie.id}/poster`)}
           alt={movie.clean_title}
           className="poster-img-3d"
           onError={() => setImgError(true)}

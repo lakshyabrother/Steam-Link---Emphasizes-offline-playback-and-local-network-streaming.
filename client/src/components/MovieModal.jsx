@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getApiUrl } from '../utils/api.js';
 import {
   X, Play, Heart, Clock, HardDrive, Subtitles, Image as ImageIcon,
   RotateCcw, Check, AlertCircle, FolderMinus, Trash2
@@ -75,7 +76,7 @@ export default function MovieModal({
         {/* 16:9 Widescreen Backdrop Banner */}
         <div className="movie-modal-top-banner">
           <img
-            src={`/api/movies/${movie.id}/backdrop?k=${posterKey}`}
+            src={getApiUrl(`/api/movies/${movie.id}/backdrop?k=${posterKey}`)}
             alt={movie.clean_title}
             className="movie-modal-backdrop-img"
           />
@@ -91,7 +92,7 @@ export default function MovieModal({
           <div className="movie-modal-poster-col">
             <div className="movie-modal-poster">
               <img
-                src={`/api/movies/${movie.id}/poster?k=${posterKey}`}
+                src={getApiUrl(`/api/movies/${movie.id}/poster?k=${posterKey}`)}
                 alt={movie.clean_title}
                 key={posterKey}
               />
@@ -275,7 +276,7 @@ export default function MovieModal({
                   onClick={() => onPlay(rec)}
                 >
                   <img
-                    src={`/api/movies/${rec.id}/poster`}
+                    src={getApiUrl(`/api/movies/${rec.id}/poster`)}
                     alt={rec.clean_title}
                     className="rec-poster"
                     loading="lazy"

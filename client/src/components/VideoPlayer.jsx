@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { getApiUrl } from '../utils/api.js';
 import {
   Play, Pause, RotateCcw, RotateCw, Volume2, VolumeX,
   Maximize, Minimize, ArrowLeft, Settings, Subtitles, Check,
@@ -121,7 +122,8 @@ export default function VideoPlayer({ movie, onBack, token, authFetch }) {
   }, [movie]);
 
   // Video stream URL (handles authenticated users and public share links)
-  const streamUrl = movie.streamUrlOverride || `/api/movies/${movie.id}/stream?token=${encodeURIComponent(token || '')}`;
+  const rawStreamUrl = movie.streamUrlOverride || `/api/movies/${movie.id}/stream?token=${encodeURIComponent(token || '')}`;
+  const streamUrl = getApiUrl(rawStreamUrl);
 
   // Auto-hide controls after inactivity
   const handleMouseMove = () => {
@@ -549,7 +551,7 @@ export default function VideoPlayer({ movie, onBack, token, authFetch }) {
               key={idx}
               kind="subtitles"
               label={sub.language}
-              src={`/api/movies/${movie.id}/subtitles/${idx}?token=${encodeURIComponent(token || '')}`}
+              src={getApiUrl(`/api/movies/${movie.id}/subtitles/${idx}?token=${encodeURIComponent(token || '')}`)}
               default={idx === selectedSubtitle}
             />
           ))}

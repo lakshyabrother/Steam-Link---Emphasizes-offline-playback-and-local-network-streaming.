@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Play, Info, Sparkles, Clock, HardDrive } from 'lucide-react';
 import { formatDuration } from './MovieCard';
+import { getApiUrl } from '../utils/api.js';
 
 export default function HeroSection({ movie, onPlay, onDetails }) {
   const heroRef = useRef(null);
@@ -40,7 +41,7 @@ export default function HeroSection({ movie, onPlay, onDetails }) {
         }}
       >
         <img
-          src={`/api/movies/${movie.id}/backdrop`}
+          src={getApiUrl(`/api/movies/${movie.id}/backdrop`)}
           alt={movie.clean_title}
           className="hero-bg-image"
         />

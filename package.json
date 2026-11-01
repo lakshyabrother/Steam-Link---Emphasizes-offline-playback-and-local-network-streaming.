@@ -7,8 +7,9 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "build:client": "cd client && npm.cmd run build",
-    "dev:client": "cd client && npm.cmd run dev"
+    "build": "npm run build --prefix client",
+    "build:client": "npm run build --prefix client",
+    "dev:client": "npm run dev --prefix client"
   },
   "keywords": [
     "streaming",

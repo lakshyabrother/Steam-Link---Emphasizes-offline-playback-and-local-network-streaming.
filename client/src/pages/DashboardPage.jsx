@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getApiUrl } from '../utils/api.js';
 import {
   Globe, Copy, Check, QrCode, ArrowUpRight, Folder, RefreshCw,
   RotateCw, Play, Square, HardDrive, Users, Shield, UserPlus,
@@ -128,7 +129,7 @@ export default function DashboardPage({ authFetch, onOpenFolderPicker, onOpenSha
 
   // Backup Download
   const handleDownloadBackup = () => {
-    window.open(`/api/admin/backup?token=${encodeURIComponent(localStorage.getItem('streamlink_token'))}`, '_blank');
+    window.open(getApiUrl(`/api/admin/backup?token=${encodeURIComponent(localStorage.getItem('streamlink_token'))}`), '_blank');
   };
 
   // Restore Backup
