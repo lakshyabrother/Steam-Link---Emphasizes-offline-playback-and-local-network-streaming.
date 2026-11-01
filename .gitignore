@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+client/node_modules/
+
+# Binaries & Executables
+bin/*.exe
+*.exe
+
+# Database files & local runtime cache
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/posters/*
+!data/posters/.gitkeep
+!data/.gitkeep
+
+# Environment variables & local secrets
+.env
+.env.local
+*.local
+
+# System & OS files
+Thumbs.db
+.DS_Store
+
+# Temporary logs & test artifacts
+*.log
+.system_generated/
+streamlink_disposable_audit_test/
