@@ -1,8 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 title StreamLink GitHub Publisher
-set "PATH=C:\Users\ASUS\AppData\Local\Programs\MinGit\cmd;%PATH%"
-cd /d "C:\Users\ASUS\Downloads\steamlink"
+cd /d "%~dp0"
 
 echo ================================================================
 echo           STREAMLINK - PUSH COMMITS TO GITHUB

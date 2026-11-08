@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Film, Lock, User, AlertCircle, ArrowRight, Server, Check, RefreshCw, ChevronDown, ChevronUp, Globe } from 'lucide-react';
+import { Film, Lock, User, AlertCircle, ArrowRight, Server, Check, RefreshCw, ChevronDown, ChevronUp, Globe, Info, RotateCcw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getApiBaseUrl, setApiBaseUrl } from '../utils/api';
 
@@ -13,7 +13,7 @@ export default function LoginPage() {
   // Automatically open Server Connection if running on a remote domain (like Vercel)
   const isRemoteHost = typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1');
   const [showServerConfig, setShowServerConfig] = useState(() => isRemoteHost || !getApiBaseUrl());
-  const [serverUrlInput, setServerUrlInput] = useState(() => getApiBaseUrl() || (isRemoteHost ? 'https://sponsored-fee-imposed-associations.trycloudflare.com' : ''));
+  const [serverUrlInput, setServerUrlInput] = useState(() => getApiBaseUrl() || '');
   const [testingConnection, setTestingConnection] = useState(false);
   const [testResult, setTestResult] = useState(null);
 
@@ -25,7 +25,7 @@ export default function LoginPage() {
       await login(username.trim(), password);
     } catch (err) {
       const msg = err.message || 'Login failed';
-      if (msg.includes('fetch') || msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+      if (msg.includes('fetch') || msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Cannot connect')) {
         setError('Cannot connect to your StreamLink server. Please enter your Cloudflare Tunnel URL below and click Save.');
         setShowServerConfig(true);
       } else {
@@ -37,16 +37,49 @@ export default function LoginPage() {
   };
 
   const handleTestAndSave = async (overrideUrl) => {
-    const targetUrl = (overrideUrl !== undefined ? overrideUrl : serverUrlInput).trim().replace(/\/+$/, '');
+    let rawUrl = (overrideUrl !== undefined ? overrideUrl : serverUrlInput).trim();
+
+    if (!rawUrl) {
+      setApiBaseUrl('');
+      setServerUrlInput('');
+      setTestResult({
+        type: 'success',
+        message: 'Server URL cleared (using local /api).'
+      });
+      setError('');
+      return;
+    }
+
+    let targetUrl = rawUrl.replace(/\/+$/, '');
+    if (!/^https?:\/\//i.test(targetUrl)) {
+      targetUrl = `https://${targetUrl}`;
+    }
+    // Remove trailing /api if user appended it
+    targetUrl = targetUrl.replace(/\/api\/?$/i, '');
+
+    // Catch dummy placeholders like in documentation or screenshots
+    if (
+      targetUrl.includes('your-temporary-url') ||
+      targetUrl.includes('your-tunnel') ||
+      targetUrl.includes('sponsored-fee-imposed-associations')
+    ) {
+      setTestResult({
+        type: 'error',
+        message: 'Please replace the placeholder with your actual Cloudflare Tunnel URL generated on your PC.'
+      });
+      return;
+    }
+
     setTestingConnection(true);
     setTestResult(null);
 
-    const testEndpoint = targetUrl ? `${targetUrl}/api/health` : '/api/health';
+    const testEndpoint = `${targetUrl}/api/health`;
 
     try {
-      const res = await fetch(testEndpoint, { signal: AbortSignal.timeout(6000) });
+      const res = await fetch(testEndpoint, { signal: AbortSignal.timeout(8000) });
       if (res.ok) {
         setApiBaseUrl(targetUrl);
+        setServerUrlInput(targetUrl);
         setTestResult({
           type: 'success',
           message: 'Connected to StreamLink Server successfully!'
@@ -58,7 +91,7 @@ export default function LoginPage() {
     } catch (err) {
       setTestResult({
         type: 'error',
-        message: 'Could not connect. Verify your Cloudflare Tunnel URL or ensure start-streamlink.bat is running on your PC.'
+        message: 'Could not connect. Ensure start-streamlink.bat is running on your PC and Cloudflare Tunnel is started in your Dashboard.'
       });
     } finally {
       setTestingConnection(false);
@@ -192,23 +225,26 @@ export default function LoginPage() {
                   type="button"
                   className="login-preset-chip"
                   onClick={() => {
-                    setServerUrlInput('https://sponsored-fee-imposed-associations.trycloudflare.com');
-                    handleTestAndSave('https://sponsored-fee-imposed-associations.trycloudflare.com');
-                  }}
-                >
-                  <Globe size={11} style={{ display: 'inline', marginRight: '4px' }} />
-                  Connect to My Cloudflare Tunnel
-                </button>
-                <button
-                  type="button"
-                  className="login-preset-chip"
-                  onClick={() => {
                     setServerUrlInput('http://localhost:5050');
                     handleTestAndSave('http://localhost:5050');
                   }}
                 >
+                  <Globe size={11} style={{ display: 'inline', marginRight: '4px' }} />
                   Localhost (5050)
                 </button>
+                {getApiBaseUrl() && (
+                  <button
+                    type="button"
+                    className="login-preset-chip"
+                    onClick={() => {
+                      setServerUrlInput('');
+                      handleTestAndSave('');
+                    }}
+                  >
+                    <RotateCcw size={11} style={{ display: 'inline', marginRight: '4px' }} />
+                    Reset / Clear URL
+                  </button>
+                )}
               </div>
 
               {testResult && (
@@ -216,6 +252,22 @@ export default function LoginPage() {
                   {testResult.message}
                 </div>
               )}
+
+              <div className="login-server-guide">
+                <div className="login-server-guide-title">
+                  <Info size={13} style={{ flexShrink: 0 }} />
+                  <span>How to connect when hosted on Vercel:</span>
+                </div>
+                <ol className="login-server-steps">
+                  <li>Run <code>start-streamlink.bat</code> on your PC (where movies are stored).</li>
+                  <li>In your PC browser, open <code>http://localhost:5050</code> and go to <strong>Dashboard</strong>.</li>
+                  <li>Under <strong>Cloudflare Tunnel</strong>, click <strong>START SERVER</strong>.</li>
+                  <li>Copy your live <code>https://....trycloudflare.com</code> link, paste it in the box above, and click <strong>Save</strong>.</li>
+                </ol>
+                <div className="login-server-tip">
+                  💡 <strong>Tip:</strong> You don't need Vercel! Your Cloudflare Tunnel link from your PC can be shared and opened directly on any phone or device.
+                </div>
+              </div>
             </div>
           )}
         </div>

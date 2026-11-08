@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Play, Clock, Sparkles, TrendingUp, Heart, Film, ArrowRight, FolderPlus } from 'lucide-react';
 import HeroSection from '../components/HeroSection';
 import MovieCard, { formatDuration } from '../components/MovieCard';
+import { getApiUrl } from '../utils/api';
 
 export default function HomePage({ onSelectMovie, onPlayMovie, authFetch, onNavigateLibrary, onOpenFolderPicker }) {
   const [sections, setSections] = useState({
@@ -107,7 +108,7 @@ export default function HomePage({ onSelectMovie, onPlayMovie, authFetch, onNavi
                   onClick={() => onPlayMovie(item)}
                 >
                   <div className="continue-poster-thumb">
-                    <img src={`/api/movies/${item.id}/poster`} alt={item.clean_title} />
+                    <img src={getApiUrl(`/api/movies/${item.id}/poster`)} alt={item.clean_title} />
                     <div className="continue-play-overlay">
                       <Play size={20} fill="#ffffff" />
                     </div>

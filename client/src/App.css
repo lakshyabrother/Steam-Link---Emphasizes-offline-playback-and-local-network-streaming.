@@ -3285,6 +3285,50 @@ label {
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
+.login-server-guide {
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.login-server-guide-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.login-server-steps {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.login-server-steps code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 10px;
+  color: #60a5fa;
+}
+
+.login-server-tip {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  font-size: 10.5px;
+}
+
 /* ============================================================
    PUBLIC VIEWER — Mobile-First Shared Streaming Interface
    Visual References: Yaart Mobile + Velvet Midnight + Bato Curves

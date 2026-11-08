@@ -1,4 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
+import path from 'path';
+import os from 'os';
 import { CONFIG } from './config.js';
 import crypto from 'crypto';
 
@@ -129,9 +131,10 @@ function initSchema(db) {
   try { db.exec("ALTER TABLE share_links ADD COLUMN folder_name TEXT DEFAULT '';"); } catch (e) {}
   try { db.exec("ALTER TABLE share_links ADD COLUMN movie_count INTEGER DEFAULT 0;"); } catch (e) {}
 
-  // Default settings (Default folder: D:\Movies)
+  // Default settings
+  const defaultLibraryFolder = process.platform === 'win32' ? 'D:\\Movies' : path.join(os.homedir(), 'Movies');
   const defaultSettings = [
-    { key: 'library_folder', value: 'D:\\Movies' },
+    { key: 'library_folder', value: defaultLibraryFolder },
     { key: 'server_name', value: 'StreamLink Media Server' },
     { key: 'tunnel_mode', value: 'quick' },
     { key: 'tunnel_token', value: '' },

@@ -3,6 +3,7 @@ import { Film, Search, Play, Clock, HardDrive, Lock, AlertCircle, FolderOpen } f
 import VideoPlayer from '../components/VideoPlayer';
 import MovieModal from '../components/MovieModal';
 import { formatDuration, formatFileSize } from '../components/MovieCard';
+import { getApiUrl } from '../utils/api';
 
 export default function PublicViewerPage({ token }) {
   const [loading, setLoading] = useState(true);
@@ -21,7 +22,7 @@ export default function PublicViewerPage({ token }) {
     setError('');
 
     try {
-      const res = await fetch('/api/share/public/access', {
+      const res = await fetch(getApiUrl('/api/share/public/access'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, passcode: enteredPasscode })
@@ -181,7 +182,7 @@ export default function PublicViewerPage({ token }) {
           // Single Movie Showcase View
           <div className="single-movie-showcase">
             <div className="single-movie-poster-box">
-              <img src={`/api/movies/${shareData.movie.id}/poster`} alt={shareData.movie.clean_title} />
+              <img src={getApiUrl(`/api/movies/${shareData.movie.id}/poster`)} alt={shareData.movie.clean_title} />
             </div>
 
             <div className="single-movie-info-box">
@@ -265,7 +266,7 @@ export default function PublicViewerPage({ token }) {
                     onClick={() => setSelectedMovie(movie)}
                   >
                     <div className="poster-wrapper-3d">
-                      <img src={`/api/movies/${movie.id}/poster`} alt={movie.clean_title} className="poster-img-3d" loading="lazy" />
+                      <img src={getApiUrl(`/api/movies/${movie.id}/poster`)} alt={movie.clean_title} className="poster-img-3d" loading="lazy" />
                       <div className="poster-overlay-3d">
                         <div className="play-circle-3d">
                           <Play size={22} fill="#fff" strokeWidth={0} />

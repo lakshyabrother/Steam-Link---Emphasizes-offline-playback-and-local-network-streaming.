@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { spawn } from 'child_process';
 import * as mm from 'music-metadata';
 import { CONFIG } from './config.js';
@@ -13,16 +14,42 @@ let cachedFfprobePath = null;
 export async function getFfprobePath() {
   if (cachedFfprobePath) return cachedFfprobePath;
 
+  const isWin = process.platform === 'win32';
+  const ext = isWin ? '.exe' : '';
+
   // Check local bin
-  const localProbe = path.join(CONFIG.ROOT_DIR, 'bin', 'ffprobe.exe');
+  const localProbe = path.join(CONFIG.ROOT_DIR, 'bin', `ffprobe${ext}`);
   if (fs.existsSync(localProbe)) {
     cachedFfprobePath = localProbe;
     return cachedFfprobePath;
   }
 
-  // Check PATH or standard winget location
+  // Check common default locations
+  if (isWin) {
+    const gyanPath = 'C:\\Program Files\\FFmpeg\\bin\\ffprobe.exe';
+    if (fs.existsSync(gyanPath)) {
+      cachedFfprobePath = gyanPath;
+      return cachedFfprobePath;
+    }
+  } else {
+    const brewSilicon = '/opt/homebrew/bin/ffprobe';
+    if (fs.existsSync(brewSilicon)) {
+      cachedFfprobePath = brewSilicon;
+      return cachedFfprobePath;
+    }
+    const usrLocal = '/usr/local/bin/ffprobe';
+    if (fs.existsSync(usrLocal)) {
+      cachedFfprobePath = usrLocal;
+      return cachedFfprobePath;
+    }
+  }
+
+  // Check system PATH
+  const lookupCmd = isWin ? 'where.exe' : 'which';
+  const targetBinary = isWin ? 'ffprobe.exe' : 'ffprobe';
+
   return new Promise((resolve) => {
-    const proc = spawn('where.exe', ['ffprobe.exe']);
+    const proc = spawn(lookupCmd, [targetBinary]);
     let out = '';
     proc.stdout.on('data', (d) => { out += d.toString(); });
     proc.on('close', (code) => {
@@ -30,17 +57,12 @@ export async function getFfprobePath() {
         cachedFfprobePath = out.split(/\r?\n/)[0].trim();
         resolve(cachedFfprobePath);
       } else {
-        // Check Gyan ffmpeg path if recently installed
-        const gyanPath = 'C:\\Program Files\\FFmpeg\\bin\\ffprobe.exe';
-        if (fs.existsSync(gyanPath)) {
-          cachedFfprobePath = gyanPath;
-          resolve(cachedFfprobePath);
-        } else {
-          resolve(null);
-        }
+        resolve(null);
       }
     });
-    proc.on('error', () => resolve(null));
+    proc.on('error', () => {
+      resolve(null);
+    });
   });
 }
 
@@ -404,38 +426,49 @@ export async function scanLibrary(customFolder = null) {
 }
 
 /**
- * List Windows Drives (C:\, D:\, E:\, etc.)
+ * List System Drives or common root directories
  */
 export async function listDrives() {
-  return new Promise((resolve) => {
-    const ps = spawn('powershell.exe', ['-NoProfile', '-Command', 'Get-PSDrive -PSProvider FileSystem | Select-Object -ExpandProperty Root']);
-    let output = '';
+  if (process.platform === 'win32') {
+    return new Promise((resolve) => {
+      const ps = spawn('powershell.exe', ['-NoProfile', '-Command', 'Get-PSDrive -PSProvider FileSystem | Select-Object -ExpandProperty Root']);
+      let output = '';
 
-    ps.stdout.on('data', (d) => { output += d.toString(); });
-    ps.on('close', () => {
-      const drives = output
-        .split(/\r?\n/)
-        .map(d => d.trim())
-        .filter(d => d.length > 0 && fs.existsSync(d));
+      ps.stdout.on('data', (d) => { output += d.toString(); });
+      ps.on('close', () => {
+        const drives = output
+          .split(/\r?\n/)
+          .map(d => d.trim())
+          .filter(d => d.length > 0 && fs.existsSync(d));
 
-      if (drives.length === 0) {
+        resolve(drives.length === 0 ? ['C:\\'] : drives);
+      });
+
+      ps.on('error', () => {
         resolve(['C:\\']);
-      } else {
-        resolve(drives);
-      }
+      });
     });
+  }
 
-    ps.on('error', () => {
-      resolve(['C:\\']);
-    });
-  });
+  // macOS / Linux locations
+  const home = os.homedir();
+  const candidates = [
+    home,
+    path.join(home, 'Movies'),
+    path.join(home, 'Downloads'),
+    path.join(home, 'Desktop'),
+    '/Volumes',
+    '/'
+  ];
+  return candidates.filter(p => fs.existsSync(p));
 }
 
 /**
  * List subdirectories of a given path for the interactive directory picker
  */
 export async function listDirectory(dirPath) {
-  const target = dirPath ? path.resolve(dirPath) : 'C:\\';
+  const defaultRoot = process.platform === 'win32' ? 'C:\\' : os.homedir();
+  const target = dirPath ? path.resolve(dirPath) : defaultRoot;
 
   if (!fs.existsSync(target)) {
     throw new Error(`Directory does not exist: ${target}`);
@@ -475,39 +508,67 @@ export async function listDirectory(dirPath) {
 }
 
 /**
- * Launch native Windows Folder Dialog using PowerShell
+ * Launch native OS Folder Dialog (macOS Finder dialog or Windows FolderBrowserDialog)
  */
 export function openNativeWindowsFolderDialog() {
   return new Promise((resolve, reject) => {
-    const psScript = `
-      Add-Type -AssemblyName System.Windows.Forms
-      $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-      $dialog.Description = "Select Movie Folder for StreamLink"
-      $dialog.ShowNewFolderButton = $false
-      $res = $dialog.ShowDialog()
-      if ($res -eq [System.Windows.Forms.DialogResult]::OK) {
-        Write-Output $dialog.SelectedPath
-      } else {
-        Write-Output "CANCELLED"
-      }
-    `;
+    // macOS native folder picker using AppleScript
+    if (process.platform === 'darwin') {
+      const script = 'POSIX path of (choose folder with prompt "Select Movie Folder for StreamLink")';
+      const osa = spawn('osascript', ['-e', script]);
+      let stdout = '';
 
-    const ps = spawn('powershell.exe', ['-NoProfile', '-Command', psScript]);
-    let stdout = '';
+      osa.stdout.on('data', (d) => { stdout += d.toString(); });
+      osa.on('close', (code) => {
+        const res = stdout.trim().replace(/\/+$/, '');
+        if (code === 0 && res) {
+          resolve(res);
+        } else {
+          resolve(null);
+        }
+      });
 
-    ps.stdout.on('data', (d) => { stdout += d.toString(); });
-
-    ps.on('close', (code) => {
-      const res = stdout.trim();
-      if (res && res !== 'CANCELLED') {
-        resolve(res);
-      } else {
+      osa.on('error', () => {
         resolve(null);
-      }
-    });
+      });
+      return;
+    }
 
-    ps.on('error', (err) => {
-      reject(err);
-    });
+    if (process.platform === 'win32') {
+      const psScript = `
+        Add-Type -AssemblyName System.Windows.Forms
+        $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+        $dialog.Description = "Select Movie Folder for StreamLink"
+        $dialog.ShowNewFolderButton = $false
+        $res = $dialog.ShowDialog()
+        if ($res -eq [System.Windows.Forms.DialogResult]::OK) {
+          Write-Output $dialog.SelectedPath
+        } else {
+          Write-Output "CANCELLED"
+        }
+      `;
+
+      const ps = spawn('powershell.exe', ['-NoProfile', '-Command', psScript]);
+      let stdout = '';
+
+      ps.stdout.on('data', (d) => { stdout += d.toString(); });
+
+      ps.on('close', (code) => {
+        const res = stdout.trim();
+        if (res && res !== 'CANCELLED') {
+          resolve(res);
+        } else {
+          resolve(null);
+        }
+      });
+
+      ps.on('error', (err) => {
+        reject(err);
+      });
+      return;
+    }
+
+    // Other platforms
+    resolve(null);
   });
 }

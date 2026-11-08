@@ -1,7 +1,21 @@
 export function getApiBaseUrl() {
   if (typeof window !== 'undefined') {
     const custom = localStorage.getItem('streamlink_api_url');
-    if (custom) return custom.trim().replace(/\/+$/, '');
+    if (custom) {
+      const trimmed = custom.trim().replace(/\/+$/, '');
+      // Purge invalid/dummy placeholders if stored
+      if (
+        trimmed.includes('your-temporary-url') ||
+        trimmed.includes('your-tunnel') ||
+        trimmed.includes('sponsored-fee-imposed-associations') ||
+        trimmed === 'https://' ||
+        trimmed === 'http://'
+      ) {
+        localStorage.removeItem('streamlink_api_url');
+      } else {
+        return trimmed;
+      }
+    }
   }
   return (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '');
 }

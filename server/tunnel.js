@@ -24,22 +24,32 @@ function appendTunnelLog(msg) {
 }
 
 /**
- * Locate official cloudflared binary
+ * Locate official cloudflared binary (cross-platform for Windows, macOS, Linux)
  */
 export function getCloudflaredPath() {
-  const localBin = path.join(CONFIG.ROOT_DIR, 'bin', 'cloudflared.exe');
+  const isWin = process.platform === 'win32';
+  const ext = isWin ? '.exe' : '';
+  const localBin = path.join(CONFIG.ROOT_DIR, 'bin', `cloudflared${ext}`);
   if (fs.existsSync(localBin)) {
     return localBin;
   }
 
-  const progFiles32 = 'C:\\Program Files (x86)\\cloudflared\\cloudflared.exe';
-  if (fs.existsSync(progFiles32)) {
-    return progFiles32;
-  }
+  if (isWin) {
+    const progFiles32 = 'C:\\Program Files (x86)\\cloudflared\\cloudflared.exe';
+    if (fs.existsSync(progFiles32)) return progFiles32;
 
-  const progFiles64 = 'C:\\Program Files\\cloudflared\\cloudflared.exe';
-  if (fs.existsSync(progFiles64)) {
-    return progFiles64;
+    const progFiles64 = 'C:\\Program Files\\cloudflared\\cloudflared.exe';
+    if (fs.existsSync(progFiles64)) return progFiles64;
+  } else {
+    // macOS (Homebrew Apple Silicon & Intel) + Linux paths
+    const brewSilicon = '/opt/homebrew/bin/cloudflared';
+    if (fs.existsSync(brewSilicon)) return brewSilicon;
+
+    const usrLocal = '/usr/local/bin/cloudflared';
+    if (fs.existsSync(usrLocal)) return usrLocal;
+
+    const usrBin = '/usr/bin/cloudflared';
+    if (fs.existsSync(usrBin)) return usrBin;
   }
 
   return 'cloudflared';
