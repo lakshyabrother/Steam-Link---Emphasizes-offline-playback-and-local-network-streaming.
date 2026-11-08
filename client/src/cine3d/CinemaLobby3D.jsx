@@ -4,12 +4,62 @@ import { Play, Info, Sparkles, Layers, ArrowLeft, ArrowRight, RotateCcw, Grid, S
 import { getApiUrl } from '../utils/api';
 import { performanceManager, QUALITY_LEVELS } from './PerformanceManager';
 
+// Responsive 3D Card Size Presets
+const SIZE_CONFIGS = {
+  compact: {
+    cardWidth: 1.5,
+    cardHeight: 2.25,
+    activeScale: 1.10,
+    hoverScale: 1.02,
+    idleScale: 0.88,
+    camZ: 15.2,
+    camY: 0.65,
+    cardY: 0.45,
+    gridY: -1.9,
+    fov: 46
+  },
+  balanced: {
+    cardWidth: 1.85,
+    cardHeight: 2.78,
+    activeScale: 1.12,
+    hoverScale: 1.04,
+    idleScale: 0.90,
+    camZ: 15.6,
+    camY: 0.65,
+    cardY: 0.45,
+    gridY: -2.1,
+    fov: 46
+  },
+  cinematic: {
+    cardWidth: 2.3,
+    cardHeight: 3.45,
+    activeScale: 1.15,
+    hoverScale: 1.05,
+    idleScale: 0.92,
+    camZ: 16.2,
+    camY: 0.70,
+    cardY: 0.48,
+    gridY: -2.4,
+    fov: 48
+  }
+};
+
 export default function CinemaLobby3D({ movies = [], onSelectMovie, onPlayMovie, onSwitchTo2D }) {
   const mountRef = useRef(null);
   const [qualityLevel, setQualityLevel] = useState(performanceManager.currentLevel);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [hoveredMovie, setHoveredMovie] = useState(null);
+  const [cardScaleSetting, setCardScaleSetting] = useState(() => {
+    return localStorage.getItem('streamlink_cine3d_card_scale') || 'balanced';
+  });
+
+  const handleCardScaleChange = (newScale) => {
+    setCardScaleSetting(newScale);
+    try {
+      localStorage.setItem('streamlink_cine3d_card_scale', newScale);
+    } catch (e) {}
+  };
 
   // Subscribe to performance quality changes
   useEffect(() => {
@@ -72,12 +122,15 @@ export default function CinemaLobby3D({ movies = [], onSelectMovie, onPlayMovie,
     const width = container.clientWidth || window.innerWidth;
     const height = container.clientHeight || window.innerHeight;
 
+    const currentConfig = SIZE_CONFIGS[cardScaleSetting] || SIZE_CONFIGS.balanced;
+
     // 1. Scene & Camera
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x08080C, 0.028);
 
-    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
-    camera.position.set(0, 0.5, 14);
+    const camera = new THREE.PerspectiveCamera(currentConfig.fov, width / height, 0.1, 100);
+    camera.position.set(0, currentConfig.camY, currentConfig.camZ);
+    camera.lookAt(0, currentConfig.cardY * 0.4, 0);
 
     // 2. Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: qualityLevel === QUALITY_LEVELS.HIGH, alpha: true });
@@ -87,7 +140,7 @@ export default function CinemaLobby3D({ movies = [], onSelectMovie, onPlayMovie,
     container.appendChild(renderer.domElement);
 
     // 3. Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.88);
     scene.add(ambientLight);
 
     const spotlight = new THREE.SpotLight(0x8B5CF6, 2.5);
@@ -102,7 +155,7 @@ export default function CinemaLobby3D({ movies = [], onSelectMovie, onPlayMovie,
 
     // 4. Ground Mirror / Grid
     const gridHelper = new THREE.GridHelper(36, 36, 0x8B5CF6, 0x1E2238);
-    gridHelper.position.y = -3.2;
+    gridHelper.position.y = currentConfig.gridY;
     scene.add(gridHelper);
 
     // 5. Build Cylinder/Arc of Movie Cards
@@ -110,10 +163,8 @@ export default function CinemaLobby3D({ movies = [], onSelectMovie, onPlayMovie,
     scene.add(cardsGroup);
 
     const count = validMovies.length;
-    const radius = Math.max(7.5, count * 0.95);
-    const cardWidth = 3.0;
-    const cardHeight = 4.5;
-    const cardGeometry = new THREE.PlaneGeometry(cardWidth, cardHeight);
+    const radius = Math.max(8.0, count * 0.95);
+    const cardGeometry = new THREE.PlaneGeometry(currentConfig.cardWidth, currentConfig.cardHeight);
     const textureLoader = new THREE.TextureLoader();
 
     const meshes = [];
@@ -171,9 +222,9 @@ export default function CinemaLobby3D({ movies = [], onSelectMovie, onPlayMovie,
       materials.push(mat);
 
       const mesh = new THREE.Mesh(cardGeometry, mat);
-      mesh.position.set(x, 0, z);
-      // Face inward toward the center (0, 0, 0)
-      mesh.lookAt(0, 0, 0);
+      mesh.position.set(x, currentConfig.cardY, z);
+      // Face inward toward the center
+      mesh.lookAt(0, currentConfig.cardY, 0);
       // Flip 180 degrees so poster faces outward toward the camera
       mesh.rotation.y += Math.PI;
 
@@ -267,7 +318,6 @@ export default function CinemaLobby3D({ movies = [], onSelectMovie, onPlayMovie,
       cardsGroup.rotation.y = angleRef.current;
 
       // Calculate which card is closest to camera front (z = radius)
-      // Card angle relative to camera: (angle + cardsGroup.rotation.y) mod 2PI
       const normalizedGroupAngle = (-cardsGroup.rotation.y % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
       const step = (Math.PI * 2) / count;
       let closestIdx = Math.round(normalizedGroupAngle / step) % count;
@@ -287,7 +337,7 @@ export default function CinemaLobby3D({ movies = [], onSelectMovie, onPlayMovie,
         const isHovered = hoveredMesh === mesh;
 
         // Target scale & elevation
-        const targetScale = isActive ? 1.25 : (isHovered ? 1.08 : 0.95);
+        const targetScale = isActive ? currentConfig.activeScale : (isHovered ? currentConfig.hoverScale : currentConfig.idleScale);
         mesh.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
 
         // Highlight material
@@ -328,7 +378,7 @@ export default function CinemaLobby3D({ movies = [], onSelectMovie, onPlayMovie,
       textures.forEach(t => t.dispose());
       renderer.dispose();
     };
-  }, [validMovies, qualityLevel]);
+  }, [validMovies, qualityLevel, cardScaleSetting]);
 
   // CSS 3D Fallback Mode for Low Quality / Mobile / Reduced Motion
   if (qualityLevel === QUALITY_LEVELS.LOW || qualityLevel === QUALITY_LEVELS.REDUCED_MOTION) {
@@ -413,6 +463,37 @@ export default function CinemaLobby3D({ movies = [], onSelectMovie, onPlayMovie,
         </div>
 
         <div className="lobby-top-controls">
+          {/* Card Size Selector Controls */}
+          <div className="lobby-size-picker" title="Adjust 3D Movie Poster Size">
+            <span className="lobby-picker-label">Card Size</span>
+            <div className="lobby-size-btn-group">
+              <button
+                type="button"
+                className={`lobby-size-pill ${cardScaleSetting === 'compact' ? 'active' : ''}`}
+                onClick={() => handleCardScaleChange('compact')}
+                title="Small / Compact posters"
+              >
+                Small
+              </button>
+              <button
+                type="button"
+                className={`lobby-size-pill ${cardScaleSetting === 'balanced' ? 'active' : ''}`}
+                onClick={() => handleCardScaleChange('balanced')}
+                title="Medium / Balanced posters (Default)"
+              >
+                Medium
+              </button>
+              <button
+                type="button"
+                className={`lobby-size-pill ${cardScaleSetting === 'cinematic' ? 'active' : ''}`}
+                onClick={() => handleCardScaleChange('cinematic')}
+                title="Large / Cinematic posters"
+              >
+                Large
+              </button>
+            </div>
+          </div>
+
           <button
             className="btn-secondary btn-sm"
             onClick={onSwitchTo2D}
@@ -438,7 +519,7 @@ export default function CinemaLobby3D({ movies = [], onSelectMovie, onPlayMovie,
             <h2 className="hud-movie-title">{activeMovie.clean_title}</h2>
 
             <p className="hud-instructions">
-              Drag horizontally or use <strong>← / → Arrow Keys</strong> to rotate • <strong>Enter</strong> for details • <strong>Space</strong> to stream
+              Drag horizontally or use <strong>← / →</strong> to rotate • <strong>Enter</strong> for details • <strong>Space</strong> to stream
             </p>
 
             <div className="hud-actions-row">
@@ -481,4 +562,3 @@ export default function CinemaLobby3D({ movies = [], onSelectMovie, onPlayMovie,
     </div>
   );
 }
-

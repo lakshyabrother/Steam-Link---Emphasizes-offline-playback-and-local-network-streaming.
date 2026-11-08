@@ -4293,6 +4293,62 @@ label {
   pointer-events: auto;
 }
 
+.lobby-top-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lobby-size-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 18, 30, 0.85);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  padding: 4px 10px;
+  border-radius: 8px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.lobby-picker-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: #94A3B8;
+  text-transform: uppercase;
+}
+
+.lobby-size-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lobby-size-pill {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94A3B8;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lobby-size-pill:hover {
+  background: rgba(139, 92, 246, 0.18);
+  color: #F8FAFC;
+}
+
+.lobby-size-pill.active {
+  background: #8B5CF6;
+  color: #FFFFFF;
+  border-color: #8B5CF6;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.5);
+}
+
 .lobby-badge {
   display: inline-flex;
   align-items: center;
@@ -4318,21 +4374,21 @@ label {
 
 .lobby-floating-hud {
   position: absolute;
-  bottom: 28px;
+  bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
   width: 90%;
-  max-width: 620px;
+  max-width: 520px;
   z-index: 10;
   pointer-events: auto;
 }
 
 .hud-content-panel {
-  background: rgba(15, 16, 23, 0.82);
+  background: rgba(15, 16, 23, 0.88);
   border: 1px solid rgba(139, 92, 246, 0.28);
-  border-radius: 14px;
-  padding: 22px 26px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 30px rgba(139, 92, 246, 0.12);
+  border-radius: 12px;
+  padding: 14px 22px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 24px rgba(139, 92, 246, 0.15);
   backdrop-filter: blur(20px);
   text-align: center;
   animation: hudFadeUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
@@ -4388,20 +4444,20 @@ label {
 }
 
 .hud-movie-title {
-  font-size: 22px;
-  font-weight: 800;
+  font-size: 18px;
+  font-weight: 700;
   color: #F8FAFC;
-  margin-bottom: 8px;
-  letter-spacing: -0.3px;
+  margin: 4px 0 3px;
+  letter-spacing: -0.2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .hud-instructions {
-  font-size: 12px;
+  font-size: 11px;
   color: #94A3B8;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 .hud-actions-row {
@@ -4472,7 +4528,7 @@ label {
 }
 
 .css3d-active-card-portal {
-  max-width: 340px;
+  max-width: 250px;
   width: 100%;
 }
 
