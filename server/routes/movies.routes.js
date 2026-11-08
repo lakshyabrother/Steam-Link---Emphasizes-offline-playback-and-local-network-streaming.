@@ -1,6 +1,7 @@
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
+import { spawn } from 'child_process';
 import { getDatabase, addLog } from '../database.js';
 import { requireAuth } from '../auth.js';
 import { handleStreamRequest, convertSrtToVtt } from '../streamer.js';
@@ -52,128 +53,187 @@ function findLocalArtwork(filePath, kind = 'poster') {
 }
 
 /**
- * Generate a premium CINEFLOW Midnight SVG poster (Velvet OTT palette & Bato curves)
+ * Helper to escape XML characters in SVG text
+ */
+function escapeXml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+/**
+ * Extract a high-definition video frame screencap using FFmpeg
+ */
+function extractVideoFrame(videoFilePath, outputJpgPath, seekSeconds = 2) {
+  return new Promise((resolve) => {
+    if (!videoFilePath) return resolve(false);
+    try {
+      if (!fs.existsSync(videoFilePath)) return resolve(false);
+      const proc = spawn('ffmpeg', [
+        '-y',
+        '-ss', String(seekSeconds),
+        '-i', videoFilePath,
+        '-vframes', '1',
+        '-q:v', '2',
+        outputJpgPath
+      ]);
+      proc.on('close', (code) => {
+        resolve(code === 0 && fs.existsSync(outputJpgPath));
+      });
+      proc.on('error', () => resolve(false));
+    } catch (e) {
+      resolve(false);
+    }
+  });
+}
+
+/**
+ * Generate a vibrant Gen-Z aesthetic SVG poster (300x450)
+ * Uses 6 aesthetic themes based on title hash so every file gets a unique, stunning cover!
  */
 function generateMovieSvgPoster(title, year, resolution) {
   let hash = 0;
   for (let i = 0; i < title.length; i++) {
     hash = title.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const cleanDisplayTitle = title.length > 28 ? title.substring(0, 26) + '...' : title;
-  const safeRes = (resolution || '1080P').toUpperCase();
-  const safeYear = year ? String(year) : '';
+  const themeIdx = Math.abs(hash) % 6;
 
-  // Palette: Velvet OTT Midnight (#080B14, #101626, #151D30, #8B7CFF, #38BDF8)
+  const themes = [
+    { name: 'Cyberpunk Neon', c1: '#7928CA', c2: '#FF0080', c3: '#00DFD8', accent: '#FF0080', tag: 'CYBER-VIBE' },
+    { name: 'Synthwave Horizon', c1: '#E11D48', c2: '#FB923C', c3: '#4F46E5', accent: '#FB923C', tag: 'SYNTH-WAVE' },
+    { name: 'Matrix Emerald', c1: '#059669', c2: '#06B6D4', c3: '#0B132B', accent: '#10B981', tag: 'MATRIX-CORE' },
+    { name: 'Ultraviolet Prime', c1: '#8B5CF6', c2: '#D946EF', c3: '#18181B', accent: '#C084FC', tag: 'ULTRAVIOLET' },
+    { name: 'Tokyo Crimson', c1: '#DC2626', c2: '#701A75', c3: '#0A0A0A', accent: '#F87171', tag: 'TOKYO-NIGHTS' },
+    { name: 'Cosmic Dream', c1: '#0284C7', c2: '#38BDF8', c3: '#818CF8', accent: '#38BDF8', tag: 'COSMIC-STREAM' }
+  ];
+  const t = themes[themeIdx];
+
+  const rawClean = (title || 'Movie').replace(/\.(mp4|mkv|avi|mov|webm)$/i, '').replace(/[_\.\-]+/g, ' ').trim();
+  const cleanDisplayTitle = escapeXml(rawClean.length > 26 ? rawClean.substring(0, 24) + '...' : rawClean);
+  const initialLetter = escapeXml((rawClean.charAt(0) || 'S').toUpperCase());
+  const safeRes = escapeXml((resolution || '1080P').toUpperCase());
+  const safeYear = year ? escapeXml(String(year)) : '';
+
   return `
     <svg xmlns="http://www.w3.org/2000/svg" width="300" height="450" viewBox="0 0 300 450">
       <defs>
-        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#151D30" />
-          <stop offset="40%" stop-color="#101626" />
-          <stop offset="100%" stop-color="#080B14" />
+        <linearGradient id="posterGrad_${themeIdx}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="${t.c1}" />
+          <stop offset="50%" stop-color="${t.c2}" />
+          <stop offset="100%" stop-color="${t.c3}" />
         </linearGradient>
-        <radialGradient id="violetGlow" cx="30%" cy="25%" r="65%">
-          <stop offset="0%" stop-color="#8B7CFF" stop-opacity="0.35" />
-          <stop offset="60%" stop-color="#6366F1" stop-opacity="0.08" />
-          <stop offset="100%" stop-color="#080B14" stop-opacity="0" />
+        <radialGradient id="neonHalo_${themeIdx}" cx="35%" cy="30%" r="65%">
+          <stop offset="0%" stop-color="${t.accent}" stop-opacity="0.45" />
+          <stop offset="60%" stop-color="${t.c1}" stop-opacity="0.15" />
+          <stop offset="100%" stop-color="#090B10" stop-opacity="0.85" />
         </radialGradient>
-        <radialGradient id="cyanGlow" cx="80%" cy="75%" r="55%">
-          <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.25" />
-          <stop offset="100%" stop-color="#080B14" stop-opacity="0" />
-        </radialGradient>
-        <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#8B7CFF" />
-          <stop offset="100%" stop-color="#38BDF8" />
+        <linearGradient id="glassPlaque" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#090B10" stop-opacity="0.4" />
+          <stop offset="100%" stop-color="#090B10" stop-opacity="0.96" />
         </linearGradient>
-        <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-          <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.6"/>
-        </filter>
       </defs>
 
-      <!-- Background Canvas with Moderately Rounded Corners -->
-      <rect width="300" height="450" rx="8" fill="url(#bg)"/>
-      <rect width="300" height="450" rx="8" fill="url(#violetGlow)"/>
-      <rect width="300" height="450" rx="8" fill="url(#cyanGlow)"/>
+      <!-- Base Canvas Background with Rich Theme Colors -->
+      <rect width="300" height="450" rx="10" fill="url(#posterGrad_${themeIdx})"/>
+      <rect width="300" height="450" rx="10" fill="url(#neonHalo_${themeIdx})"/>
 
-      <!-- Ambient Geometric Studio Grid Lines -->
-      <line x1="24" y1="90" x2="276" y2="90" stroke="rgba(139,124,255,0.08)" stroke-width="1"/>
-      <line x1="24" y1="330" x2="276" y2="330" stroke="rgba(56,189,248,0.08)" stroke-width="1"/>
+      <!-- Ambient Diagonal Cyber Lines -->
+      <line x1="0" y1="40" x2="300" y2="180" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
+      <line x1="0" y1="120" x2="300" y2="260" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+      <line x1="0" y1="200" x2="300" y2="340" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
 
-      <!-- Stylized Cinema Aperture Graphic -->
-      <circle cx="150" cy="195" r="54" fill="none" stroke="rgba(139,124,255,0.18)" stroke-width="2"/>
-      <circle cx="150" cy="195" r="44" fill="rgba(16,22,38,0.7)" stroke="rgba(56,189,248,0.22)" stroke-width="1.5"/>
-      <polygon points="144,180 164,195 144,210" fill="url(#accentGrad)" filter="url(#shadow)"/>
+      <!-- Stylized Giant Monogram Initial -->
+      <text x="150" y="245" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="140" font-weight="900" fill="rgba(255,255,255,0.08)" text-anchor="middle">${initialLetter}</text>
 
-      <!-- Top Badges Row (Refined 4px radius) -->
-      <rect x="20" y="20" width="56" height="22" rx="4" fill="rgba(16,22,38,0.85)" stroke="rgba(56,189,248,0.3)" stroke-width="1"/>
-      <text x="48" y="35" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="10" font-weight="700" fill="#38BDF8" letter-spacing="0.5" text-anchor="middle">${safeRes}</text>
+      <!-- Center Glowing Aperture & Play Circle -->
+      <circle cx="150" cy="180" r="46" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+      <circle cx="150" cy="180" r="36" fill="rgba(9,11,16,0.65)" stroke="${t.accent}" stroke-width="1.5"/>
+      <polygon points="144,168 162,180 144,192" fill="#FFFFFF"/>
 
-      ${safeYear ? `
-        <rect x="224" y="20" width="56" height="22" rx="4" fill="rgba(16,22,38,0.85)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
-        <text x="252" y="35" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="10" font-weight="600" fill="#CBD5E1" text-anchor="middle">${safeYear}</text>
-      ` : ''}
+      <!-- Top Badges Row -->
+      <rect x="18" y="18" width="62" height="22" rx="5" fill="rgba(9,11,16,0.75)" stroke="${t.accent}" stroke-width="1"/>
+      <text x="49" y="33" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10" font-weight="800" fill="#FFFFFF" text-anchor="middle">⚡ ${safeRes}</text>
 
-      <!-- Bottom Film Title Plaque -->
-      <rect x="0" y="320" width="300" height="130" fill="url(#bg)" opacity="0.94"/>
-      <rect x="20" y="324" width="28" height="2.5" rx="1.25" fill="url(#accentGrad)"/>
-      <text x="20" y="366" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="16" font-weight="800" fill="#F8FAFC">${cleanDisplayTitle}</text>
-      <text x="20" y="392" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="11" font-weight="600" fill="#94A3B8">STREAMLINK CINEMA</text>
-      <text x="20" y="412" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="10" fill="#64748B">Direct Host Workstation Stream</text>
+      <rect x="220" y="18" width="62" height="22" rx="5" fill="rgba(9,11,16,0.75)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+      <text x="251" y="33" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10" font-weight="800" fill="#FACC15" text-anchor="middle">⭐ 9.8</text>
+
+      <!-- Bottom Glass Title Plaque -->
+      <rect x="0" y="310" width="300" height="140" fill="url(#glassPlaque)"/>
+      <rect x="18" y="316" width="32" height="3" rx="1.5" fill="${t.accent}"/>
+
+      <text x="18" y="340" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="9" font-weight="800" fill="${t.accent}" letter-spacing="1">✨ ${t.tag}</text>
+      <text x="18" y="368" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="16" font-weight="900" fill="#FFFFFF">${cleanDisplayTitle}</text>
+      <text x="18" y="392" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10.5" font-weight="600" fill="rgba(255,255,255,0.7)">DIRECT WORKSTATION BITRATE</text>
+
+      <!-- Equalizer Visualizer Bars in corner -->
+      <rect x="240" y="415" width="3" height="12" rx="1" fill="${t.accent}"/>
+      <rect x="246" y="410" width="3" height="17" rx="1" fill="#FFFFFF"/>
+      <rect x="252" y="418" width="3" height="9" rx="1" fill="${t.accent}"/>
+      <rect x="258" y="412" width="3" height="15" rx="1" fill="#FFFFFF"/>
+      <rect x="264" y="420" width="3" height="7" rx="1" fill="${t.accent}"/>
+      <rect x="270" y="414" width="3" height="13" rx="1" fill="#FFFFFF"/>
     </svg>
   `.trim();
 }
 
 /**
- * Generate 16:9 Widescreen Backdrop SVG (1280x720) for Hero & Player banners
+ * Generate 16:9 Widescreen Backdrop SVG (1280x720) with Cinematic Aurora Mesh
  */
 function generateMovieSvgBackdrop(title, year, resolution) {
-  const cleanDisplayTitle = title.length > 40 ? title.substring(0, 38) + '...' : title;
-  const safeRes = (resolution || '1080P').toUpperCase();
-  const safeYear = year ? String(year) : '';
+  let hash = 0;
+  for (let i = 0; i < title.length; i++) {
+    hash = title.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const themeIdx = Math.abs(hash) % 6;
+
+  const themes = [
+    { c1: '#4A154B', c2: '#1E1B4B', c3: '#0F172A', accent: '#C084FC' },
+    { c1: '#831843', c2: '#312E81', c3: '#090B10', accent: '#F43F5E' },
+    { c1: '#064E3B', c2: '#0F172A', c3: '#090B10', accent: '#10B981' },
+    { c1: '#581C87', c2: '#1E1B4B', c3: '#090B10', accent: '#8B5CF6' },
+    { c1: '#7F1D1D', c2: '#2E1065', c3: '#090B10', accent: '#F87171' },
+    { c1: '#0C4A6E', c2: '#1E1B4B', c3: '#090B10', accent: '#38BDF8' }
+  ];
+  const t = themes[themeIdx];
+
+  const rawClean = (title || 'Movie').replace(/\.(mp4|mkv|avi|mov|webm)$/i, '').replace(/[_\.\-]+/g, ' ').trim();
+  const cleanDisplayTitle = escapeXml(rawClean.length > 38 ? rawClean.substring(0, 36) + '...' : rawClean);
+  const safeRes = escapeXml((resolution || '1080P').toUpperCase());
+  const safeYear = year ? escapeXml(String(year)) : '';
 
   return `
     <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
       <defs>
-        <linearGradient id="bgH" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#151D30" />
-          <stop offset="45%" stop-color="#101626" />
-          <stop offset="100%" stop-color="#080B14" />
+        <linearGradient id="bgH_${themeIdx}" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="${t.c1}" />
+          <stop offset="50%" stop-color="${t.c2}" />
+          <stop offset="100%" stop-color="${t.c3}" />
         </linearGradient>
-        <radialGradient id="heroViolet" cx="20%" cy="30%" r="70%">
-          <stop offset="0%" stop-color="#8B7CFF" stop-opacity="0.32" />
-          <stop offset="70%" stop-color="#6366F1" stop-opacity="0.04" />
-          <stop offset="100%" stop-color="#080B14" stop-opacity="0" />
+        <radialGradient id="auroraGlow_${themeIdx}" cx="75%" cy="35%" r="60%">
+          <stop offset="0%" stop-color="${t.accent}" stop-opacity="0.45" />
+          <stop offset="70%" stop-color="${t.c1}" stop-opacity="0.1" />
+          <stop offset="100%" stop-color="#090B10" stop-opacity="0" />
         </radialGradient>
-        <radialGradient id="heroCyan" cx="75%" cy="65%" r="60%">
-          <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.22" />
-          <stop offset="100%" stop-color="#080B14" stop-opacity="0" />
-        </radialGradient>
-        <linearGradient id="titleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#F8FAFC" />
-          <stop offset="100%" stop-color="#CBD5E1" />
-        </linearGradient>
-        <linearGradient id="heroAccent" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#8B7CFF" />
-          <stop offset="100%" stop-color="#38BDF8" />
-        </linearGradient>
       </defs>
 
-      <rect width="1280" height="720" fill="url(#bgH)"/>
-      <rect width="1280" height="720" fill="url(#heroViolet)"/>
-      <rect width="1280" height="720" fill="url(#heroCyan)"/>
+      <rect width="1280" height="720" fill="url(#bgH_${themeIdx})"/>
+      <rect width="1280" height="720" fill="url(#auroraGlow_${themeIdx})"/>
 
-      <!-- Ambient Cinema Waves / Geometry -->
-      <circle cx="880" cy="360" r="280" fill="none" stroke="rgba(139,124,255,0.06)" stroke-width="2"/>
-      <circle cx="880" cy="360" r="190" fill="none" stroke="rgba(56,189,248,0.08)" stroke-width="1.5"/>
-      <circle cx="880" cy="360" r="100" fill="none" stroke="rgba(139,124,255,0.12)" stroke-width="1"/>
+      <!-- Ambient Cinema Rings & Stars -->
+      <circle cx="950" cy="360" r="320" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1.5"/>
+      <circle cx="950" cy="360" r="220" fill="none" stroke="${t.accent}" stroke-opacity="0.12" stroke-width="1.5"/>
+      <circle cx="950" cy="360" r="120" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
 
       <!-- Vignette Overlay -->
-      <rect width="1280" height="720" fill="url(#bgH)" opacity="0.35"/>
+      <rect width="1280" height="720" fill="#090B10" opacity="0.35"/>
 
-      <!-- Text / Branding Overlay -->
-      <rect x="80" y="390" width="48" height="4" rx="2" fill="url(#heroAccent)"/>
-      <text x="80" y="440" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="42" font-weight="900" fill="url(#titleGrad)">${cleanDisplayTitle}</text>
-      <text x="80" y="480" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="16" font-weight="700" fill="#8B7CFF" letter-spacing="1.5">STREAMLINK PERSONAL CINEMA • ${safeRes}${safeYear ? ` • ${safeYear}` : ''}</text>
+      <!-- Typography -->
+      <rect x="80" y="420" width="54" height="4" rx="2" fill="${t.accent}"/>
+      <text x="80" y="470" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="44" font-weight="900" fill="#FFFFFF">${cleanDisplayTitle}</text>
+      <text x="80" y="508" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16" font-weight="700" fill="${t.accent}" letter-spacing="1.5">STREAMLINK 2.0 CINEMA • ${safeRes}${safeYear ? ` • ${safeYear}` : ''}</text>
     </svg>
   `.trim();
 }
@@ -824,7 +884,15 @@ router.get('/:id/poster', async (req, res) => {
     return res.sendFile(localArt);
   }
 
-  // 4. Fallback to clean studio cinematic SVG placeholder
+  // 4. Auto-extract video frame from movie file using FFmpeg
+  if (movie.file_path && fs.existsSync(movie.file_path)) {
+    const extracted = await extractVideoFrame(movie.file_path, cachedPoster, 2);
+    if (extracted && fs.existsSync(cachedPoster)) {
+      return res.sendFile(cachedPoster);
+    }
+  }
+
+  // 5. Fallback to clean studio cinematic SVG placeholder
   const svg = generateMovieSvgPoster(movie.clean_title, movie.year, movie.resolution);
   res.writeHead(200, {
     'Content-Type': 'image/svg+xml',
@@ -922,7 +990,7 @@ router.post('/:id/backdrop', requireAuth, async (req, res) => {
 });
 
 // Movie 16:9 Widescreen Backdrop (Local image, cached backdrop, or cinematic SVG)
-router.get('/:id/backdrop', (req, res) => {
+router.get('/:id/backdrop', async (req, res) => {
   const movieId = parseInt(req.params.id, 10);
   const db = getDatabase();
 
@@ -956,7 +1024,15 @@ router.get('/:id/backdrop', (req, res) => {
     return res.sendFile(localArt);
   }
 
-  // 5. Fallback to widescreen SVG backdrop
+  // 5. Auto-extract video frame from movie file using FFmpeg
+  if (movie.file_path && fs.existsSync(movie.file_path)) {
+    const extracted = await extractVideoFrame(movie.file_path, cachedBackdrop, 4);
+    if (extracted && fs.existsSync(cachedBackdrop)) {
+      return res.sendFile(cachedBackdrop);
+    }
+  }
+
+  // 6. Fallback to widescreen SVG backdrop
   const svg = generateMovieSvgBackdrop(movie.clean_title, movie.year, movie.resolution);
   res.writeHead(200, {
     'Content-Type': 'image/svg+xml',

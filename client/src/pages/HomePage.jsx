@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Clock, Sparkles, TrendingUp, Heart, Film, ArrowRight, FolderPlus, Layers, Compass, Zap } from 'lucide-react';
+import { Play, Clock, Sparkles, TrendingUp, Heart, Film, ArrowRight, FolderPlus, Layers, Compass, Zap, Flame } from 'lucide-react';
 import HeroSection from '../components/HeroSection';
 import MovieCard, { formatDuration } from '../components/MovieCard';
 import { getApiUrl } from '../utils/api';
+import { formatDisplayTitle } from '../utils/formatTitle';
 
 export default function HomePage({
   onSelectMovie,
@@ -22,6 +23,17 @@ export default function HomePage({
   });
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeVibe, setActiveVibe] = useState('all');
+
+  const vibePills = [
+    { id: 'all', label: 'All Vibes', icon: Sparkles, color: '#8B5CF6' },
+    { id: 'trending', label: 'Trending', icon: Flame, color: '#EC4899' },
+    { id: '4k', label: '4K Ultra HD', icon: Zap, color: '#38BDF8' },
+    { id: 'continue', label: 'Continue Binge', icon: Clock, color: '#A855F7' },
+    { id: 'anime', label: 'Anime & Aesthetic', icon: Film, color: '#F43F5E' },
+    { id: 'recommended', label: 'Curated For You', icon: Compass, color: '#10B981' },
+    { id: 'favorites', label: 'Favorites', icon: Heart, color: '#F59E0B' }
+  ];
 
   const fetchSections = () => {
     setLoading(true);
@@ -102,21 +114,46 @@ export default function HomePage({
         />
       )}
 
-      {/* CINE-3D Experience Invitation Banner */}
+      {/* Gen Z Interactive Vibe Category Pills Bar */}
+      <div className="vibe-chips-bar">
+        {vibePills.map(vibe => {
+          const Icon = vibe.icon;
+          const isActive = activeVibe === vibe.id;
+          return (
+            <button
+              key={vibe.id}
+              className={`vibe-chip ${isActive ? 'active' : ''}`}
+              style={{
+                '--chip-color': vibe.color
+              }}
+              onClick={() => setActiveVibe(vibe.id)}
+            >
+              <Icon size={14} className="vibe-chip-icon" />
+              <span>{vibe.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* CINE-3D Experience Invitation Banner (Cyberpunk Portal) */}
       {onNavigateCine3D && (
-        <div className="cine3d-invitation-strip" onClick={onNavigateCine3D}>
+        <div className="cine3d-invitation-strip cyber-portal-strip" onClick={onNavigateCine3D}>
+          <div className="cyber-strip-glow" />
           <div className="strip-left">
             <div className="strip-sparkle-pill">
-              <Sparkles size={14} className="text-cyan pulse-icon" />
-              <span>SPATIAL WEBGL CINEMA</span>
+              <Sparkles size={13} className="text-cyan pulse-icon" />
+              <span>SPATIAL 3D CINEMA METAVERSE</span>
             </div>
-            <h3>Explore in CINE-3D Spatial Lobby</h3>
-            <p>Step inside an interactive 3D curved cinema carousel with dynamic lighting and spatial controls.</p>
+            <h3 className="cyber-portal-heading">Explore in CINE-3D Spatial Lobby</h3>
+            <p className="cyber-portal-desc">Step inside an interactive 3D curved cinema carousel with volumetric depth, spatial physics, and holographic inertia.</p>
           </div>
-          <button className="btn-primary btn-sm">
-            <span>Enter CINE-3D</span>
-            <ArrowRight size={14} />
-          </button>
+          <div className="strip-right-action">
+            <button className="cyber-portal-launch-btn">
+              <Sparkles size={15} />
+              <span>Launch 3D Cinema</span>
+              <ArrowRight size={15} />
+            </button>
+          </div>
         </div>
       )}
 
@@ -133,6 +170,7 @@ export default function HomePage({
           <div className="continue-watching-grid">
             {sections.continueWatching.map(item => {
               const pct = item.duration > 0 ? Math.min(100, Math.round((item.progress_seconds / item.duration) * 100)) : 50;
+              const displayTitle = formatDisplayTitle(item.clean_title);
               return (
                 <div
                   key={item.id}
@@ -140,7 +178,7 @@ export default function HomePage({
                   onClick={() => onPlayMovie(item)}
                 >
                   <div className="continue-poster-thumb">
-                    <img src={getApiUrl(`/api/movies/${item.id}/poster`)} alt={item.clean_title} />
+                    <img src={getApiUrl(`/api/movies/${item.id}/poster`)} alt={displayTitle} />
                     <div className="continue-play-overlay">
                       <Play size={20} fill="#ffffff" />
                     </div>
@@ -148,8 +186,8 @@ export default function HomePage({
 
                   <div className="continue-info">
                     <div>
-                      <h4 className="continue-title" title={item.clean_title}>
-                        {item.clean_title}
+                      <h4 className="continue-title" title={displayTitle}>
+                        {displayTitle}
                       </h4>
                       <div className="continue-time">
                         {formatDuration(item.progress_seconds)} of {formatDuration(item.duration)} ({pct}%)

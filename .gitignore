@@ -12,6 +12,8 @@ data/*.db-wal
 data/*.db-shm
 data/posters/*
 !data/posters/.gitkeep
+data/backdrops/*
+!data/backdrops/.gitkeep
 !data/.gitkeep
 
 # Environment variables & local secrets

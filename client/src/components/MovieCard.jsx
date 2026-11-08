@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { getApiUrl } from '../utils/api.js';
+import { formatDisplayTitle } from '../utils/formatTitle.js';
 import {
   Play, Heart, Clock, HardDrive, MoreVertical,
   Trash2, FolderMinus, Info, Image as ImageIcon, CheckSquare, Square
@@ -41,6 +42,7 @@ export default function MovieCard({
   const [showMenu, setShowMenu] = useState(false);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [imgError, setImgError] = useState(false);
+  const displayTitle = formatDisplayTitle(movie.clean_title);
 
   // Close three-dot menu when clicking outside
   useEffect(() => {
@@ -114,7 +116,7 @@ export default function MovieCard({
         <div className="movie-list-thumb">
           <img
             src={getApiUrl(imgError ? `/api/movies/${movie.id}/poster?fallback=1` : `/api/movies/${movie.id}/poster`)}
-            alt={movie.clean_title}
+            alt={displayTitle}
             onError={() => setImgError(true)}
             loading="lazy"
           />
@@ -134,7 +136,7 @@ export default function MovieCard({
 
         <div className="movie-list-info">
           <div className="movie-list-title-row">
-            <h4 className="movie-list-title" title={movie.clean_title}>{movie.clean_title}</h4>
+            <h4 className="movie-list-title" title={displayTitle}>{displayTitle}</h4>
             {movie.resolution && <span className="badge-studio">{movie.resolution}</span>}
           </div>
 
@@ -293,11 +295,14 @@ export default function MovieCard({
       <div className="poster-wrapper-3d">
         <img
           src={getApiUrl(imgError ? `/api/movies/${movie.id}/poster?fallback=1` : `/api/movies/${movie.id}/poster`)}
-          alt={movie.clean_title}
+          alt={displayTitle}
           className="poster-img-3d"
           onError={() => setImgError(true)}
           loading="lazy"
         />
+
+        {/* Diagonal Glossy Glass Sheen */}
+        <div className="poster-gloss-sheen" />
 
         {/* Subtle dark vignette */}
         <div className="poster-vignette" />
@@ -467,8 +472,8 @@ export default function MovieCard({
       </div>
 
       <div className="movie-info-3d">
-        <h4 className="movie-title-3d" title={movie.clean_title}>
-          {movie.clean_title}
+        <h4 className="movie-title-3d" title={displayTitle}>
+          {displayTitle}
         </h4>
 
         <div className="movie-meta-row-3d">

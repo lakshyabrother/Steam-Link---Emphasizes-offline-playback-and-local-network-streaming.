@@ -171,20 +171,81 @@ export default function CinemaLobby3D({ movies = [], onSelectMovie, onPlayMovie,
     const materials = [];
     const textures = [];
 
-    // Helper: default fallback canvas texture
+    // Helper: vibrant Gen Z aesthetic fallback canvas texture
     const createFallbackCanvasTexture = (title) => {
       const cvs = document.createElement('canvas');
       cvs.width = 300;
       cvs.height = 450;
       const ctx = cvs.getContext('2d');
-      ctx.fillStyle = '#101626';
+
+      const str = title || 'Stream';
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const themeIdx = Math.abs(hash) % 5;
+
+      const themes = [
+        { c1: '#7928CA', c2: '#FF0080', c3: '#00DFD8', accent: '#FF0080' },
+        { c1: '#E11D48', c2: '#FB923C', c3: '#4F46E5', accent: '#FB923C' },
+        { c1: '#059669', c2: '#06B6D4', c3: '#0F172A', accent: '#10B981' },
+        { c1: '#8B5CF6', c2: '#EC4899', c3: '#1E1B4B', accent: '#C084FC' },
+        { c1: '#2563EB', c2: '#38BDF8', c3: '#7C3AED', accent: '#38BDF8' }
+      ];
+      const t = themes[themeIdx];
+
+      // Multi-stop gradient
+      const grad = ctx.createLinearGradient(0, 0, 300, 450);
+      grad.addColorStop(0, t.c1);
+      grad.addColorStop(0.55, t.c2);
+      grad.addColorStop(1, t.c3);
+      ctx.fillStyle = grad;
       ctx.fillRect(0, 0, 300, 450);
-      ctx.fillStyle = '#8B5CF6';
-      ctx.fillRect(0, 440, 300, 10);
-      ctx.fillStyle = '#F8FAFC';
-      ctx.font = 'bold 20px sans-serif';
+
+      // Radial neon glow
+      const rad = ctx.createRadialGradient(80, 100, 10, 100, 120, 180);
+      rad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+      rad.addColorStop(1, 'transparent');
+      ctx.fillStyle = rad;
+      ctx.fillRect(0, 0, 300, 450);
+
+      // Large glass initial monogram
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.font = '900 130px -apple-system, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText((title || 'Movie').substring(0, 22), 150, 225);
+      ctx.fillText(str.charAt(0).toUpperCase(), 150, 240);
+
+      // Central glowing circle
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(150, 210, 42, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Top badge
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.beginPath();
+      ctx.roundRect(16, 16, 68, 22, 6);
+      ctx.fill();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 11px -apple-system, sans-serif';
+      ctx.fillText('⚡ 4K UHD', 50, 31);
+
+      // Bottom title banner
+      ctx.fillStyle = 'rgba(10, 12, 20, 0.88)';
+      ctx.fillRect(0, 340, 300, 110);
+      ctx.fillStyle = t.accent;
+      ctx.fillRect(16, 344, 24, 3);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '800 15px -apple-system, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(str.length > 24 ? str.substring(0, 22) + '...' : str, 16, 380);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.font = '600 11px -apple-system, sans-serif';
+      ctx.fillText('STREAMLINK 2.0 CINEMA', 16, 404);
+
       return new THREE.CanvasTexture(cvs);
     };
 
