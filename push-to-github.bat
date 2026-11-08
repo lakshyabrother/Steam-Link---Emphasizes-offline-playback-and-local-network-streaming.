@@ -9,6 +9,30 @@ echo ================================================================
 echo Repository: https://github.com/lakshyabrother/Steam-Link---Emphasizes-offline-playback-and-local-network-streaming..git
 echo Branch:     main
 echo.
+
+:: Ensure Git is initialized
+if not exist ".git\" (
+    echo [*] Initializing Git repository...
+    git init -b main
+    git remote add origin https://github.com/lakshyabrother/Steam-Link---Emphasizes-offline-playback-and-local-network-streaming..git
+)
+
+:: Stage all changes
+echo [*] Staging changes...
+git add .
+
+:: Commit if changes exist
+git diff-index --quiet HEAD -- 2>nul
+if errorlevel 1 (
+    set /p MSG="Enter commit message (press Enter for default): "
+    if "!MSG!"=="" set MSG="Auto-update StreamLink fixes and dependencies check"
+    git commit -m "!MSG!"
+    echo [✓] Committed changes.
+) else (
+    echo [i] Working tree clean, nothing new to commit.
+)
+
+echo.
 echo Choose authentication method:
 echo   [1] Browser Sign-In (Git Credential Manager - Recommended)
 echo   [2] Paste GitHub Personal Access Token (PAT)
@@ -22,7 +46,7 @@ if "%CHOICE%"=="2" (
     git push "https://lakshyabrother:!TOKEN!@github.com/lakshyabrother/Steam-Link---Emphasizes-offline-playback-and-local-network-streaming..git" main
 ) else (
     echo.
-    echo Launching browser authentication...
+    echo Pushing to GitHub...
     git push -u origin main
 )
 
