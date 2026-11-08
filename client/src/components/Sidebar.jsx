@@ -60,7 +60,7 @@ export default function Sidebar({
           </div>
           <div className="sidebar-brand-text">
             <span>Stream<span className="brand-accent">Link</span> <span className="version-pill">2.0</span></span>
-            <span className="sidebar-brand-sub">Project CINE-3D</span>
+            <span className="sidebar-brand-sub">OBSIDIAN CINEMA</span>
           </div>
         </div>
 

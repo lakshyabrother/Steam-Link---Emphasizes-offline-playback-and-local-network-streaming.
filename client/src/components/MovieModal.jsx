@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getApiUrl } from '../utils/api.js';
+import { getDominantArtworkColor } from '../utils/dominantColor.js';
 import {
   X, Play, Heart, Clock, HardDrive, Subtitles, Image as ImageIcon,
   RotateCcw, Check, AlertCircle, FolderMinus, Trash2, Sparkles,
@@ -19,6 +20,7 @@ export default function MovieModal({
 }) {
   const [currentMovie, setCurrentMovie] = useState(movie);
   const [recommendations, setRecommendations] = useState([]);
+  const [ambientColor, setAmbientColor] = useState('#B69AFF');
 
   // Poster & Backdrop custom replace state
   const [showPosterInput, setShowPosterInput] = useState(false);
@@ -59,6 +61,13 @@ export default function MovieModal({
         .catch(() => {});
     }
   }, [currentMovie?.id]);
+
+  useEffect(() => {
+    if (currentMovie?.id) {
+      const posterUrl = getApiUrl(`/api/movies/${currentMovie.id}/poster`);
+      getDominantArtworkColor(posterUrl).then(col => setAmbientColor(col));
+    }
+  }, [currentMovie?.id, imageKey]);
 
   if (!currentMovie) return null;
 
@@ -224,7 +233,14 @@ export default function MovieModal({
 
   return (
     <div className="movie-modal-backdrop" onClick={onClose}>
-      <div className="movie-modal-box" onClick={e => e.stopPropagation()}>
+      <div
+        className="movie-modal-box"
+        onClick={e => e.stopPropagation()}
+        style={{
+          boxShadow: `0 24px 60px rgba(0, 0, 0, 0.85), 0 0 40px ${ambientColor}26`,
+          borderColor: `${ambientColor}40`
+        }}
+      >
 
         {/* 16:9 Widescreen Backdrop Banner */}
         <div className="movie-modal-top-banner">

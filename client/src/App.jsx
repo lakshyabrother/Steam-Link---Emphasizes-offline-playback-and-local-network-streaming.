@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { WifiOff } from 'lucide-react';
 import { useAuth } from './context/AuthContext';
 import Sidebar from './components/Sidebar';
 import HomePage from './pages/HomePage';
@@ -14,6 +15,8 @@ import VideoPlayer from './components/VideoPlayer';
 import MovieModal from './components/MovieModal';
 import ProfilesModal from './components/ProfilesModal';
 import QualitySettingsModal from './components/QualitySettingsModal';
+import ObsidianLoader from './components/ObsidianLoader';
+import CursorLight from './components/CursorLight';
 import SpatialLanding from './cine3d/SpatialLanding';
 import CinemaLobby3D from './cine3d/CinemaLobby3D';
 import DimensionalSearchModal from './cine3d/DimensionalSearchModal';
@@ -133,6 +136,19 @@ export default function App() {
     });
   };
 
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const handleProfileChange = (profile) => {
     setCurrentProfile(profile);
     localStorage.setItem('streamlink_active_profile_id', String(profile.id));
@@ -140,10 +156,10 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="viewer-loading-screen">
-        <div className="loading-pulse-ring" />
-        <span style={{ marginTop: '16px', color: 'var(--text-muted)' }}>Loading StreamLink 2.0...</span>
-      </div>
+      <ObsidianLoader
+        message="Connecting to StreamLink 2.0 Media Server..."
+        onRetry={() => window.location.reload()}
+      />
     );
   }
 
@@ -182,6 +198,18 @@ export default function App() {
 
   return (
     <div className="app-shell-sidebar-layout">
+      {/* Offline Status Banner */}
+      {!isOnline && (
+        <div className="obsidian-offline-banner">
+          <span className="offline-badge">OFFLINE</span>
+          <WifiOff size={14} />
+          <span>Windows Media Server is offline. Cached library and interface are available. Streaming will resume when reconnected.</span>
+        </div>
+      )}
+
+      {/* Subtle Ambient Cursor Light & Depth */}
+      <CursorLight />
+
       {/* Dynamic Ambient Cinema Back-Glow */}
       <AmbientLighting enabled={ambientEnabled} />
 

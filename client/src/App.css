@@ -14,30 +14,31 @@
    ============================================================ */
 
 :root {
-  /* Premium Charcoal Palette */
-  --bg-main:       #0B0E14;
-  --bg-secondary:  #111520;
-  --bg-card:       #151924;
-  --bg-card-hover: #1C2232;
-  --bg-surface:    #151924;
-  --bg-input:      #0E121B;
-  --bg-sidebar:    #0E121B;
+  /* OBSIDIAN CINEMA Official Palette */
+  --bg-main:       #090B10;
+  --bg-secondary:  #121620;
+  --bg-surface:    #171D29;
+  --bg-card:       #202735;
+  --bg-card-hover: #293244;
+  --bg-input:      #121620;
+  --bg-sidebar:    #090B10;
 
   /* Borders & Accents */
-  --border:        rgba(255, 255, 255, 0.08);
-  --border-hover:  rgba(124, 108, 248, 0.35);
+  --border:        rgba(255, 255, 255, 0.09);
+  --border-hover:  rgba(182, 154, 255, 0.35);
 
   /* Typography Colors */
-  --text-primary:   #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-muted:     #64748B;
-  --text-dim:       #475569;
+  --text-primary:   #E8EAF0;
+  --text-secondary: #A1A7B5;
+  --text-muted:     #858B9A;
+  --text-dim:       #606778;
 
-  /* Accent Colors */
-  --accent:         #7C6CF8;
-  --accent-hover:   #9688FF;
+  /* Obsidian Cinema Accent Colors (Soft Lavender & Deep Violet) */
+  --accent:         #B69AFF;
+  --accent-hover:   #C8B3FF;
+  --accent-secondary: #8C75D6;
   --accent-cyan:    #38BDF8;
-  --accent-glow:    rgba(124, 108, 248, 0.25);
+  --accent-glow:    rgba(182, 154, 255, 0.25);
   --brand-red:      #E50914;
 
   /* Status Colors */
@@ -46,13 +47,16 @@
   --danger:         #EF4444;
   --info:           #38BDF8;
 
-  /* Moderate Rounded Corner Tokens (6px to 10px) */
-  --radius-xs:   4px;
-  --radius-sm:   6px;
-  --radius-md:   8px;
-  --radius-lg:   10px;
-  --radius-xl:   12px;
-  --radius-pill: 8px;
+  /* Rounded Corner Tokens (12px to 22px as specified in Obsidian Cinema) */
+  --radius-xs:   8px;
+  --radius-sm:   12px;
+  --radius-md:   16px;
+  --radius-lg:   20px;
+  --radius-xl:   22px;
+  --radius-pill: 9999px;
+
+  /* Dynamic Artwork Ambient Accent */
+  --ambient-artwork-color: #B69AFF;
 
   /* Layout */
   --sidebar-width: 240px;
@@ -5497,3 +5501,225 @@ label {
   color: #64748B;
   line-height: 1.5;
 }
+
+/* ============================================================
+   STREAMLINK 2.0 — OBSIDIAN CINEMA CUSTOM EXPERIENCES
+   ============================================================ */
+
+/* ── Offline Connectivity Banner ── */
+.obsidian-offline-banner {
+  background: linear-gradient(90deg, #1A1829 0%, #221D38 100%);
+  border-bottom: 1px solid rgba(182, 154, 255, 0.25);
+  color: #E8EAF0;
+  padding: 8px 16px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: 1000;
+  animation: bannerSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.offline-badge {
+  background: rgba(245, 158, 11, 0.2);
+  color: #F59E0B;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+@keyframes bannerSlideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ── Obsidian Cinema Loading Experience ── */
+.obsidian-loading-container {
+  position: fixed;
+  inset: 0;
+  background: #090B10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.obsidian-ambient-glow {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(182, 154, 255, 0.12) 0%, rgba(140, 117, 214, 0.04) 50%, transparent 70%);
+  filter: blur(40px);
+  animation: ambientFloat 6s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes ambientFloat {
+  0% { transform: scale(0.9) translate(-10px, -10px); }
+  100% { transform: scale(1.1) translate(10px, 10px); }
+}
+
+.obsidian-loader-core {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 360px;
+  padding: 20px;
+  z-index: 1;
+}
+
+.obsidian-emblem-wrapper {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.obsidian-pulse-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid rgba(182, 154, 255, 0.3);
+}
+
+.obsidian-pulse-ring.outer {
+  width: 100%;
+  height: 100%;
+  animation: ringPulse 2.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+.obsidian-pulse-ring.inner {
+  width: 76%;
+  height: 76%;
+  border-color: rgba(182, 154, 255, 0.5);
+  animation: ringPulse 2.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite 0.7s;
+}
+
+@keyframes ringPulse {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  50% { transform: scale(1.15); opacity: 0.2; }
+  100% { transform: scale(0.8); opacity: 0.8; }
+}
+
+.obsidian-emblem-badge {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #202735 0%, #121620 100%);
+  border: 1px solid rgba(182, 154, 255, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 20px rgba(182, 154, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.obsidian-film-icon {
+  color: #B69AFF;
+  filter: drop-shadow(0 0 8px rgba(182, 154, 255, 0.6));
+}
+
+.obsidian-loader-brand .brand-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #E8EAF0;
+  letter-spacing: -0.5px;
+}
+
+.brand-lavender {
+  color: #B69AFF;
+}
+
+.brand-version-pill {
+  font-size: 10px;
+  font-weight: 800;
+  background: rgba(182, 154, 255, 0.15);
+  color: #B69AFF;
+  border: 1px solid rgba(182, 154, 255, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.brand-subtitle {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #858B9A;
+  margin-top: 4px;
+}
+
+.obsidian-loader-status {
+  font-size: 13px;
+  color: #A1A7B5;
+  margin: 18px 0 16px;
+}
+
+.obsidian-progress-track {
+  width: 200px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.obsidian-progress-shimmer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, #B69AFF, transparent);
+  border-radius: 3px;
+  animation: shimmerMove 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes shimmerMove {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+.obsidian-retry-prompt {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  animation: fadeIn 0.4s ease;
+}
+
+.retry-hint {
+  font-size: 12px;
+  color: #A1A7B5;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Subtle Ambient Cursor Spotlight ── */
+.ambient-cursor-light {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(182, 154, 255, 0.055) 0%, rgba(140, 117, 214, 0.015) 45%, transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+  mix-blend-mode: screen;
+  will-change: transform;
+}
+

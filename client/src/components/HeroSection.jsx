@@ -1,11 +1,20 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Play, Info, Sparkles, Clock, HardDrive } from 'lucide-react';
 import { formatDuration } from './MovieCard';
 import { getApiUrl } from '../utils/api.js';
+import { getDominantArtworkColor } from '../utils/dominantColor.js';
 
 export default function HeroSection({ movie, onPlay, onDetails, onEnterCine3D, onToggleFavorite, isFavorite }) {
   const heroRef = useRef(null);
   const [parallaxOffset, setParallaxOffset] = useState({ x: 0, y: 0 });
+  const [ambientHue, setAmbientHue] = useState('#B69AFF');
+
+  useEffect(() => {
+    if (movie?.id) {
+      const backdropUrl = getApiUrl(`/api/movies/${movie.id}/backdrop`);
+      getDominantArtworkColor(backdropUrl).then(col => setAmbientHue(col));
+    }
+  }, [movie?.id]);
 
   if (!movie) return null;
 
@@ -52,7 +61,8 @@ export default function HeroSection({ movie, onPlay, onDetails, onEnterCine3D, o
       <div
         className="hero-accent-light"
         style={{
-          transform: `translate3d(${parallaxOffset.x * 1.5}px, ${parallaxOffset.y * 1.5}px, 0)`
+          transform: `translate3d(${parallaxOffset.x * 1.5}px, ${parallaxOffset.y * 1.5}px, 0)`,
+          background: `radial-gradient(circle, ${ambientHue}33 0%, ${ambientHue}11 50%, transparent 70%)`
         }}
       />
 
