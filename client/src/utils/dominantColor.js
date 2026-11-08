@@ -70,3 +70,4 @@ export async function getDominantArtworkColor(imageUrl) {
     img.src = imageUrl;
   });
 }
+

@@ -10,24 +10,21 @@ echo Repository: https://github.com/lakshyabrother/Steam-Link---Emphasizes-offli
 echo Branch:     main
 echo.
 
-:: Ensure Git is initialized
 if not exist ".git\" (
     echo [*] Initializing Git repository...
     git init -b main
     git remote add origin https://github.com/lakshyabrother/Steam-Link---Emphasizes-offline-playback-and-local-network-streaming..git
 )
 
-:: Stage all changes
 echo [*] Staging changes...
-git add .
+git add -A
 
-:: Commit if changes exist
 git diff-index --quiet HEAD -- 2>nul
 if errorlevel 1 (
     set /p MSG="Enter commit message (press Enter for default): "
     if "!MSG!"=="" set MSG="Auto-update StreamLink fixes and dependencies check"
     git commit -m "!MSG!"
-    echo [✓] Committed changes.
+    echo [OK] Committed changes.
 ) else (
     echo [i] Working tree clean, nothing new to commit.
 )
