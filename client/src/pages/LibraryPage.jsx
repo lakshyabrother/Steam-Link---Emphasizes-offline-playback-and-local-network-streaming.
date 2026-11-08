@@ -7,11 +7,12 @@ import {
 } from 'lucide-react';
 import MovieCard, { formatDuration, formatFileSize } from '../components/MovieCard';
 
-export default function LibraryPage({ onSelectMovie, onPlayMovie, authFetch, onOpenFolderPicker }) {
+export default function LibraryPage({ onSelectMovie, onPlayMovie, authFetch, onOpenFolderPicker, onNavigateCine3D }) {
   const [movies, setMovies] = useState([]);
   const [search, setSearch] = useState('');
   const [resolutionFilter, setResolutionFilter] = useState('');
   const [yearFilter, setYearFilter] = useState('');
+  const [genreFilter, setGenreFilter] = useState('');
   const [watchedFilter, setWatchedFilter] = useState('all'); // 'all' | 'unwatched' | 'watched'
   const [sortBy, setSortBy] = useState('recent');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
@@ -46,6 +47,7 @@ export default function LibraryPage({ onSelectMovie, onPlayMovie, authFetch, onO
     if (search.trim()) url += `&q=${encodeURIComponent(search.trim())}`;
     if (resolutionFilter) url += `&resolution=${encodeURIComponent(resolutionFilter)}`;
     if (yearFilter) url += `&year=${encodeURIComponent(yearFilter)}`;
+    if (genreFilter) url += `&genre=${encodeURIComponent(genreFilter)}`;
 
     authFetch(url)
       .then(res => res.json())
@@ -58,7 +60,7 @@ export default function LibraryPage({ onSelectMovie, onPlayMovie, authFetch, onO
 
   useEffect(() => {
     fetchMovies();
-  }, [search, resolutionFilter, yearFilter, sortBy]);
+  }, [search, resolutionFilter, yearFilter, genreFilter, sortBy]);
 
   // Rescan library
   const handleRescan = async () => {
@@ -236,6 +238,13 @@ export default function LibraryPage({ onSelectMovie, onPlayMovie, authFetch, onO
         </div>
 
         <div className="page-header-actions">
+          {onNavigateCine3D && (
+            <button className="btn-primary" onClick={onNavigateCine3D} title="Enter CINE-3D spatial cinema carousel">
+              <Sparkles size={15} className="text-cyan pulse-icon" />
+              <span>Launch CINE-3D</span>
+            </button>
+          )}
+
           {/* Multi-Select Toggle Button */}
           <button
             className={`btn-secondary ${isSelectMode ? 'active' : ''}`}
@@ -339,6 +348,20 @@ export default function LibraryPage({ onSelectMovie, onPlayMovie, authFetch, onO
 
         {/* Filters Group */}
         <div className="toolbar-filters-group">
+          {/* Genre Filter */}
+          <div className="toolbar-select-wrapper">
+            <select value={genreFilter} onChange={(e) => setGenreFilter(e.target.value)}>
+              <option value="">All Genres</option>
+              <option value="Action & Adventure">Action & Adventure</option>
+              <option value="Anime & Animation">Anime & Animation</option>
+              <option value="Horror & Suspense">Horror & Suspense</option>
+              <option value="Sci-Fi & Cyber">Sci-Fi & Cyber</option>
+              <option value="Thriller & Mystery">Thriller & Mystery</option>
+              <option value="Comedy">Comedy</option>
+              <option value="Cinema & Drama">Cinema & Drama</option>
+            </select>
+          </div>
+
           {/* Resolution Filter */}
           <div className="toolbar-select-wrapper">
             <select value={resolutionFilter} onChange={(e) => setResolutionFilter(e.target.value)}>

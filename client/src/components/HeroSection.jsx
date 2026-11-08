@@ -3,7 +3,7 @@ import { Play, Info, Sparkles, Clock, HardDrive } from 'lucide-react';
 import { formatDuration } from './MovieCard';
 import { getApiUrl } from '../utils/api.js';
 
-export default function HeroSection({ movie, onPlay, onDetails }) {
+export default function HeroSection({ movie, onPlay, onDetails, onEnterCine3D, onToggleFavorite, isFavorite }) {
   const heroRef = useRef(null);
   const [parallaxOffset, setParallaxOffset] = useState({ x: 0, y: 0 });
 
@@ -65,11 +65,14 @@ export default function HeroSection({ movie, onPlay, onDetails }) {
       >
         <div className="hero-badge-row">
           <span className="hero-badge-pill">
-            <Sparkles size={13} color="var(--primary)" />
-            <span>FEATURED STREAM</span>
+            <Sparkles size={13} className="text-cyan pulse-icon" />
+            <span>FEATURED CINEMA STREAM</span>
           </span>
           {movie.resolution && (
             <span className="hero-badge-quality">{movie.resolution} ULTRA HD</span>
+          )}
+          {movie.genre && (
+            <span className="hero-badge-genre">{movie.genre}</span>
           )}
           {movie.year && (
             <span className="hero-badge-year">{movie.year}</span>
@@ -94,6 +97,13 @@ export default function HeroSection({ movie, onPlay, onDetails }) {
             <Play size={18} fill="#ffffff" />
             <span>Watch Now</span>
           </button>
+
+          {onEnterCine3D && (
+            <button className="hero-btn-cine3d" onClick={onEnterCine3D}>
+              <Sparkles size={16} className="text-cyan" />
+              <span>Enter in CINE-3D</span>
+            </button>
+          )}
 
           <button className="hero-btn-details" onClick={() => onDetails(movie)}>
             <Info size={18} />

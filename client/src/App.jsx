@@ -12,6 +12,13 @@ import LoginPage from './pages/LoginPage';
 import PublicViewerPage from './pages/PublicViewerPage';
 import VideoPlayer from './components/VideoPlayer';
 import MovieModal from './components/MovieModal';
+import ProfilesModal from './components/ProfilesModal';
+import QualitySettingsModal from './components/QualitySettingsModal';
+import SpatialLanding from './cine3d/SpatialLanding';
+import CinemaLobby3D from './cine3d/CinemaLobby3D';
+import DimensionalSearchModal from './cine3d/DimensionalSearchModal';
+import AmbientLighting from './cine3d/AmbientLighting';
+import { performanceManager } from './cine3d/PerformanceManager';
 import './App.css';
 import './player.css';
 import './folder.css';
@@ -34,10 +41,75 @@ export default function App() {
 
   const { user, token, authFetch, loading } = useAuth();
 
-  const [currentView, setCurrentView] = useState('home'); // 'home' | 'library' | 'folder' | 'sharing' | 'dashboard' | 'favorites'
+  const [currentView, setCurrentView] = useState('home'); // 'home' | 'cine3d' | 'library' | 'folder' | 'sharing' | 'dashboard' | 'favorites'
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [playingMovie, setPlayingMovie] = useState(null);
   const [libraryFolder, setLibraryFolder] = useState('D:\\Movies');
+  const [allMovies, setAllMovies] = useState([]);
+
+  // CINE-3D Modals & Spatial States
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isProfilesOpen, setIsProfilesOpen] = useState(false);
+  const [isQualityOpen, setIsQualityOpen] = useState(false);
+  const [currentProfile, setCurrentProfile] = useState(null);
+  const [ambientEnabled, setAmbientEnabled] = useState(() => {
+    return localStorage.getItem('streamlink_ambient_lighting') !== 'false';
+  });
+  const [qualityLevel, setQualityLevel] = useState(performanceManager.currentLevel);
+
+  // First-time spatial intro experience
+  const [showSpatialIntro, setShowSpatialIntro] = useState(() => {
+    return localStorage.getItem('streamlink_seen_intro') !== 'true';
+  });
+
+  // Performance quality manager subscription
+  useEffect(() => {
+    return performanceManager.subscribe(lvl => setQualityLevel(lvl));
+  }, []);
+
+  // Global `/` keyboard shortcut for Dimensional Search
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Fetch all movies for CINE-3D cache
+  const fetchAllMovies = () => {
+    if (user && authFetch) {
+      authFetch('/api/movies?sort=recent')
+        .then(res => res.json())
+        .then(data => {
+          if (data.movies) setAllMovies(data.movies);
+        })
+        .catch(() => {});
+    }
+  };
+
+  useEffect(() => {
+    fetchAllMovies();
+  }, [user]);
+
+  // Load profiles
+  useEffect(() => {
+    if (user && authFetch) {
+      authFetch('/api/user/profiles')
+        .then(res => res.json())
+        .then(data => {
+          if (data.profiles && data.profiles.length > 0) {
+            const savedId = localStorage.getItem('streamlink_active_profile_id');
+            const found = data.profiles.find(p => String(p.id) === savedId) || data.profiles[0];
+            setCurrentProfile(found);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user]);
 
   // Load initial settings
   useEffect(() => {
@@ -53,11 +125,24 @@ export default function App() {
     }
   }, [user]);
 
+  const handleToggleAmbient = () => {
+    setAmbientEnabled(prev => {
+      const next = !prev;
+      localStorage.setItem('streamlink_ambient_lighting', String(next));
+      return next;
+    });
+  };
+
+  const handleProfileChange = (profile) => {
+    setCurrentProfile(profile);
+    localStorage.setItem('streamlink_active_profile_id', String(profile.id));
+  };
+
   if (loading) {
     return (
       <div className="viewer-loading-screen">
         <div className="loading-pulse-ring" />
-        <span style={{ marginTop: '16px', color: 'var(--text-muted)' }}>Loading StreamLink...</span>
+        <span style={{ marginTop: '16px', color: 'var(--text-muted)' }}>Loading StreamLink 2.0...</span>
       </div>
     );
   }
@@ -66,7 +151,24 @@ export default function App() {
     return <LoginPage />;
   }
 
-  // Active fullscreen video player
+  // First-time Spatial Landing Portal
+  if (showSpatialIntro) {
+    return (
+      <SpatialLanding
+        onEnter={() => {
+          setShowSpatialIntro(false);
+          localStorage.setItem('streamlink_seen_intro', 'true');
+          setCurrentView('cine3d');
+        }}
+        onSkip={() => {
+          setShowSpatialIntro(false);
+          localStorage.setItem('streamlink_seen_intro', 'true');
+        }}
+      />
+    );
+  }
+
+  // Active fullscreen video player (Independent of WebGL)
   if (playingMovie) {
     return (
       <VideoPlayer
@@ -80,10 +182,18 @@ export default function App() {
 
   return (
     <div className="app-shell-sidebar-layout">
+      {/* Dynamic Ambient Cinema Back-Glow */}
+      <AmbientLighting enabled={ambientEnabled} />
+
       {/* Sidebar Navigation */}
       <Sidebar
         currentView={currentView}
         setCurrentView={setCurrentView}
+        onOpenSearch={() => setIsSearchOpen(true)}
+        onOpenProfiles={() => setIsProfilesOpen(true)}
+        onOpenQuality={() => setIsQualityOpen(true)}
+        currentProfile={currentProfile}
+        qualityLevel={qualityLevel}
       />
 
       {/* Main Content Area */}
@@ -95,6 +205,16 @@ export default function App() {
             authFetch={authFetch}
             onNavigateLibrary={() => setCurrentView('library')}
             onOpenFolderPicker={() => setCurrentView('folder')}
+            onNavigateCine3D={() => setCurrentView('cine3d')}
+          />
+        )}
+
+        {currentView === 'cine3d' && (
+          <CinemaLobby3D
+            movies={allMovies}
+            onSelectMovie={(movie) => setSelectedMovie(movie)}
+            onPlayMovie={(movie) => setPlayingMovie(movie)}
+            onSwitchTo2D={() => setCurrentView('library')}
           />
         )}
 
@@ -104,6 +224,7 @@ export default function App() {
             onPlayMovie={(movie) => setPlayingMovie(movie)}
             authFetch={authFetch}
             onOpenFolderPicker={() => setCurrentView('folder')}
+            onNavigateCine3D={() => setCurrentView('cine3d')}
           />
         )}
 
@@ -118,6 +239,7 @@ export default function App() {
             authFetch={authFetch}
             onScanSuccess={(path) => {
               setLibraryFolder(path);
+              fetchAllMovies();
             }}
             onViewLibrary={() => setCurrentView('library')}
           />
@@ -160,6 +282,7 @@ export default function App() {
               const res = await authFetch(`/api/user/favorites/${movieId}`, { method: 'POST' });
               const data = await res.json();
               setSelectedMovie(prev => prev ? { ...prev, is_favorite: data.favorited ? 1 : 0 } : null);
+              fetchAllMovies();
             } catch (e) {}
           }}
           onRemoveMovie={async (movie) => {
@@ -167,6 +290,7 @@ export default function App() {
               try {
                 await authFetch(`/api/movies/${movie.id}/remove`, { method: 'POST' });
                 setSelectedMovie(null);
+                fetchAllMovies();
               } catch (e) {}
             }
           }}
@@ -179,12 +303,39 @@ export default function App() {
                   body: JSON.stringify({ confirmPermanent: true, confirmTitle: movie.clean_title })
                 });
                 setSelectedMovie(null);
+                fetchAllMovies();
               } catch (e) {}
             }
           }}
           authFetch={authFetch}
         />
       )}
+
+      {/* Dimensional Full-Screen Search Modal */}
+      <DimensionalSearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        onSelectMovie={(movie) => setSelectedMovie(movie)}
+        onPlayMovie={(movie) => setPlayingMovie(movie)}
+        authFetch={authFetch}
+      />
+
+      {/* Viewer Profiles Management Modal */}
+      <ProfilesModal
+        isOpen={isProfilesOpen}
+        onClose={() => setIsProfilesOpen(false)}
+        authFetch={authFetch}
+        currentProfile={currentProfile}
+        onProfileChange={handleProfileChange}
+      />
+
+      {/* CINE-3D Quality & Hardware Performance Modal */}
+      <QualitySettingsModal
+        isOpen={isQualityOpen}
+        onClose={() => setIsQualityOpen(false)}
+        ambientEnabled={ambientEnabled}
+        onToggleAmbient={handleToggleAmbient}
+      />
     </div>
   );
 }

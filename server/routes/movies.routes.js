@@ -172,7 +172,7 @@ function generateMovieSvgBackdrop(title, year, resolution) {
 
 // List Movies with search, filter, and sorting
 router.get('/', requireAuth, (req, res) => {
-  const { q, year, resolution, sort } = req.query;
+  const { q, year, resolution, genre, sort } = req.query;
   const db = getDatabase();
   const userId = req.user.id;
 
@@ -227,22 +227,60 @@ router.get('/', requireAuth, (req, res) => {
 
   const movies = db.prepare(query).all(...params);
 
-  // Parse subtitles_json safely for client
-  const mapped = movies.map(m => {
+  // Parse subtitles_json safely and attach inferred genres
+  let mapped = movies.map(m => {
     let subs = [];
     try {
       subs = JSON.parse(m.subtitles_json || '[]');
     } catch (e) {}
+    const finalGenre = (m.genre && m.genre !== 'Movie') ? m.genre : inferMovieGenre(m.clean_title);
     return {
       ...m,
+      genre: finalGenre,
       subtitles: subs
     };
   });
 
+  if (genre && genre !== 'All') {
+    mapped = mapped.filter(m => m.genre.toLowerCase() === genre.toLowerCase());
+  }
+
   res.json({ movies: mapped });
 });
 
-// Home Page Curated Sections (Hero, Continue Watching, Recently Added, Popular, Favorites)
+// Infer movie genre dynamically based on title keywords if not explicitly specified
+export function inferMovieGenre(title) {
+  const t = (title || '').toLowerCase();
+  if (/\b(anime|manga|moe|wallpaper|ghibli|animation|naruto|goku|jujutsu|demon|slayer)\b/.test(t)) return 'Anime & Animation';
+  if (/\b(horror|annabelle|conjuring|ghost|dead|evil|corpse|zombie|blood|haunted|dracula)\b/.test(t)) return 'Horror & Suspense';
+  if (/\b(action|war|blade|fighter|avengers|mission|knight|hunter|strike|combat|speed)\b/.test(t)) return 'Action & Adventure';
+  if (/\b(sci-fi|scifi|space|alien|star|cyber|matrix|future|robot|galaxy|quantum)\b/.test(t)) return 'Sci-Fi & Cyber';
+  if (/\b(thriller|mystery|crime|detective|dark|shadow|secret|clue|murder)\b/.test(t)) return 'Thriller & Mystery';
+  if (/\b(comedy|funny|laugh|humor)\b/.test(t)) return 'Comedy';
+  return 'Cinema & Drama';
+}
+
+// Get all library genres and counts
+router.get('/genres', requireAuth, (req, res) => {
+  const db = getDatabase();
+  const movies = db.prepare('SELECT id, clean_title, genre FROM movies').all();
+
+  const genreCounts = {};
+  movies.forEach(m => {
+    const g = (m.genre && m.genre !== 'Movie') ? m.genre : inferMovieGenre(m.clean_title);
+    genreCounts[g] = (genreCounts[g] || 0) + 1;
+  });
+
+  const genres = Object.entries(genreCounts).map(([name, count]) => ({ name, count }));
+  genres.sort((a, b) => b.count - a.count);
+
+  res.json({
+    total: movies.length,
+    genres: [{ name: 'All', count: movies.length }, ...genres]
+  });
+});
+
+// Home Page Curated Sections (Hero, Continue Watching, Recently Added, Popular, Favorites, Genre Collections)
 router.get('/sections/home', requireAuth, (req, res) => {
   const db = getDatabase();
   const userId = req.user.id;
@@ -257,6 +295,13 @@ router.get('/sections/home', requireAuth, (req, res) => {
     ORDER BY m.id DESC
   `).all(userId, userId);
 
+  // Augment movies with inferred genres
+  allMovies.forEach(m => {
+    if (!m.genre || m.genre === 'Movie') {
+      m.genre = inferMovieGenre(m.clean_title);
+    }
+  });
+
   const featured = allMovies.find(m => m.clean_title.toLowerCase().includes('demon') || m.clean_title.toLowerCase().includes('corpse')) || allMovies[0] || null;
 
   // 2. Continue watching
@@ -268,6 +313,9 @@ router.get('/sections/home', requireAuth, (req, res) => {
     ORDER BY wp.updated_at DESC
     LIMIT 10
   `).all(userId);
+  continueWatching.forEach(m => {
+    if (!m.genre || m.genre === 'Movie') m.genre = inferMovieGenre(m.clean_title);
+  });
 
   // 3. Recently added
   const recentlyAdded = allMovies.slice(0, 10);
@@ -281,6 +329,9 @@ router.get('/sections/home', requireAuth, (req, res) => {
     ORDER BY watch_count DESC, m.id DESC
     LIMIT 10
   `).all();
+  popular.forEach(m => {
+    if (!m.genre || m.genre === 'Movie') m.genre = inferMovieGenre(m.clean_title);
+  });
 
   // 5. Favorites
   const favorites = db.prepare(`
@@ -291,13 +342,29 @@ router.get('/sections/home', requireAuth, (req, res) => {
     ORDER BY f.created_at DESC
     LIMIT 10
   `).all(userId);
+  favorites.forEach(m => {
+    if (!m.genre || m.genre === 'Movie') m.genre = inferMovieGenre(m.clean_title);
+  });
+
+  // 6. Dynamic Genre Collections
+  const genreMap = {};
+  allMovies.forEach(m => {
+    const g = m.genre || 'Cinema & Drama';
+    if (!genreMap[g]) genreMap[g] = [];
+    genreMap[g].push(m);
+  });
+
+  const genreCollections = Object.entries(genreMap)
+    .filter(([_, list]) => list.length > 0)
+    .map(([genre, list]) => ({ genre, movies: list }));
 
   res.json({
     featured,
     continueWatching,
     recentlyAdded,
     popular,
-    favorites
+    favorites,
+    genreCollections
   });
 });
 

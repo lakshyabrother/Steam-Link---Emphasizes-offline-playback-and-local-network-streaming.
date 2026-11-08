@@ -154,4 +154,123 @@ router.post('/collections', requireAuth, (req, res) => {
   });
 });
 
+// Profiles: List
+router.get('/profiles', requireAuth, (req, res) => {
+  const userId = req.user.id;
+  const db = getDatabase();
+
+  let profiles = db.prepare('SELECT * FROM user_profiles WHERE user_id = ? ORDER BY id ASC').all(userId);
+
+  // If no profiles yet, auto-create a primary profile based on username
+  if (profiles.length === 0) {
+    const username = req.user.username || 'Viewer';
+    const ins = db.prepare(`
+      INSERT INTO user_profiles (user_id, name, avatar_color, avatar_icon, is_kids)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(userId, username, '#8B5CF6', 'film', 0);
+
+    profiles = [{
+      id: ins.lastInsertRowid,
+      user_id: userId,
+      name: username,
+      avatar_color: '#8B5CF6',
+      avatar_icon: 'film',
+      is_kids: 0,
+      created_at: new Date().toISOString()
+    }];
+  }
+
+  res.json({ profiles });
+});
+
+// Profiles: Create
+router.post('/profiles', requireAuth, (req, res) => {
+  const { name, avatar_color, avatar_icon, is_kids } = req.body;
+  const userId = req.user.id;
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Profile name is required' });
+  }
+
+  const db = getDatabase();
+  const count = db.prepare('SELECT COUNT(*) as cnt FROM user_profiles WHERE user_id = ?').get(userId)?.cnt || 0;
+  if (count >= 6) {
+    return res.status(400).json({ error: 'Maximum of 6 profiles allowed per account' });
+  }
+
+  const safeColor = avatar_color || '#8B5CF6';
+  const safeIcon = avatar_icon || 'film';
+  const safeKids = is_kids ? 1 : 0;
+
+  const ins = db.prepare(`
+    INSERT INTO user_profiles (user_id, name, avatar_color, avatar_icon, is_kids)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(userId, name.trim(), safeColor, safeIcon, safeKids);
+
+  res.status(201).json({
+    profile: {
+      id: ins.lastInsertRowid,
+      user_id: userId,
+      name: name.trim(),
+      avatar_color: safeColor,
+      avatar_icon: safeIcon,
+      is_kids: safeKids
+    }
+  });
+});
+
+// Profiles: Delete
+router.delete('/profiles/:id', requireAuth, (req, res) => {
+  const profileId = parseInt(req.params.id, 10);
+  const userId = req.user.id;
+  const db = getDatabase();
+
+  const count = db.prepare('SELECT COUNT(*) as cnt FROM user_profiles WHERE user_id = ?').get(userId)?.cnt || 0;
+  if (count <= 1) {
+    return res.status(400).json({ error: 'Cannot delete the only profile. At least one profile must exist.' });
+  }
+
+  db.prepare('DELETE FROM user_profiles WHERE id = ? AND user_id = ?').run(profileId, userId);
+  res.json({ success: true, message: 'Profile deleted' });
+});
+
+// Recommendations: Real library recommendations based on favorites and viewing history
+router.get('/recommendations', requireAuth, (req, res) => {
+  const userId = req.user.id;
+  const db = getDatabase();
+
+  // Find user's favorited or completed movie IDs
+  const favMovieIds = db.prepare('SELECT movie_id FROM favorites WHERE user_id = ?').all(userId).map(r => r.movie_id);
+  const watchedMovieIds = db.prepare('SELECT movie_id FROM watch_progress WHERE user_id = ?').all(userId).map(r => r.movie_id);
+  const excludeIds = Array.from(new Set([...favMovieIds, ...watchedMovieIds]));
+
+  let recommendations = [];
+  if (excludeIds.length > 0) {
+    const placeholders = excludeIds.map(() => '?').join(',');
+    recommendations = db.prepare(`
+      SELECT m.*,
+        CASE WHEN f.id IS NOT NULL THEN 1 ELSE 0 END AS is_favorite
+      FROM movies m
+      LEFT JOIN favorites f ON f.movie_id = m.id AND f.user_id = ?
+      WHERE m.id NOT IN (${placeholders})
+      ORDER BY m.id DESC
+      LIMIT 12
+    `).all(userId, ...excludeIds);
+  }
+
+  // If not enough recommendations from un-watched, fallback to all movies sorted by highest resolution / recent
+  if (recommendations.length < 4) {
+    recommendations = db.prepare(`
+      SELECT m.*,
+        CASE WHEN f.id IS NOT NULL THEN 1 ELSE 0 END AS is_favorite
+      FROM movies m
+      LEFT JOIN favorites f ON f.movie_id = m.id AND f.user_id = ?
+      ORDER BY m.id DESC
+      LIMIT 12
+    `).all(userId);
+  }
+
+  res.json({ recommendations });
+});
+
 export default router;

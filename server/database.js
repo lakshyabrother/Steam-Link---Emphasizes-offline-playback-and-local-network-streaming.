@@ -124,12 +124,36 @@ function initSchema(db) {
       removed_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     CREATE INDEX IF NOT EXISTS idx_ignored_movies_path ON ignored_movies(file_path);
+
+    CREATE TABLE IF NOT EXISTS user_profiles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      avatar_color TEXT NOT NULL DEFAULT '#8B5CF6',
+      avatar_icon TEXT NOT NULL DEFAULT 'film',
+      is_kids INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_profiles_user ON user_profiles(user_id);
   `);
 
   // Migrate columns if table already existed without them
   try { db.exec("ALTER TABLE share_links ADD COLUMN folder_path TEXT DEFAULT '';"); } catch (e) {}
   try { db.exec("ALTER TABLE share_links ADD COLUMN folder_name TEXT DEFAULT '';"); } catch (e) {}
   try { db.exec("ALTER TABLE share_links ADD COLUMN movie_count INTEGER DEFAULT 0;"); } catch (e) {}
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS user_profiles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        avatar_color TEXT NOT NULL DEFAULT '#8B5CF6',
+        avatar_icon TEXT NOT NULL DEFAULT 'film',
+        is_kids INTEGER NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+  } catch (e) {}
 
   // Default settings
   const defaultLibraryFolder = process.platform === 'win32' ? 'D:\\Movies' : path.join(os.homedir(), 'Movies');

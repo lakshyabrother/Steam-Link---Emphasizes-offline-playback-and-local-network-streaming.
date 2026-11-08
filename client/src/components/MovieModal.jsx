@@ -140,6 +140,9 @@ export default function MovieModal({
               {movie.resolution && (
                 <span className="badge-studio">{movie.resolution}</span>
               )}
+              {movie.genre && (
+                <span className="badge-studio-cyan">{movie.genre}</span>
+              )}
               {movie.year && (
                 <span className="badge-studio-dim">{movie.year}</span>
               )}
