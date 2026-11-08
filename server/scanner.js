@@ -5,6 +5,7 @@ import { spawn } from 'child_process';
 import * as mm from 'music-metadata';
 import { CONFIG } from './config.js';
 import { getDatabase, addLog } from './database.js';
+import { autoRecognizeMovie } from './metadata.js';
 
 let cachedFfprobePath = null;
 
@@ -369,8 +370,11 @@ export async function scanLibrary(customFolder = null) {
           existing.id
         );
         updatedCount++;
+
+        // Auto-recognize if not yet matched
+        autoRecognizeMovie(existing.id).catch(() => {});
       } else {
-        db.prepare(`
+        const insertResult = db.prepare(`
           INSERT INTO movies (
             title, clean_title, file_path, file_name, file_size, file_extension,
             duration, resolution, width, height, codec, container, year, genre,
@@ -396,6 +400,11 @@ export async function scanLibrary(customFolder = null) {
           subtitlesJson
         );
         addedCount++;
+
+        const newId = insertResult?.lastInsertRowid;
+        if (newId) {
+          autoRecognizeMovie(newId).catch(() => {});
+        }
       }
     } catch (fileErr) {
       console.error(`Failed to process movie ${filePath}:`, fileErr.message);

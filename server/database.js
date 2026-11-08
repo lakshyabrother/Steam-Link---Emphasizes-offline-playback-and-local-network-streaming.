@@ -141,6 +141,11 @@ function initSchema(db) {
   try { db.exec("ALTER TABLE share_links ADD COLUMN folder_path TEXT DEFAULT '';"); } catch (e) {}
   try { db.exec("ALTER TABLE share_links ADD COLUMN folder_name TEXT DEFAULT '';"); } catch (e) {}
   try { db.exec("ALTER TABLE share_links ADD COLUMN movie_count INTEGER DEFAULT 0;"); } catch (e) {}
+  try { db.exec("ALTER TABLE movies ADD COLUMN backdrop_url TEXT DEFAULT '';"); } catch (e) {}
+  try { db.exec("ALTER TABLE movies ADD COLUMN tmdb_id INTEGER DEFAULT NULL;"); } catch (e) {}
+  try { db.exec("ALTER TABLE movies ADD COLUMN match_status TEXT DEFAULT 'none';"); } catch (e) {}
+  try { db.exec("ALTER TABLE movies ADD COLUMN poster_path TEXT DEFAULT '';"); } catch (e) {}
+  try { db.exec("ALTER TABLE movies ADD COLUMN backdrop_path TEXT DEFAULT '';"); } catch (e) {}
   try {
     db.exec(`
       CREATE TABLE IF NOT EXISTS user_profiles (
@@ -163,7 +168,8 @@ function initSchema(db) {
     { key: 'tunnel_mode', value: 'quick' },
     { key: 'tunnel_token', value: '' },
     { key: 'custom_domain', value: '' },
-    { key: 'remote_allowed', value: '1' }
+    { key: 'remote_allowed', value: '1' },
+    { key: 'tmdb_api_key', value: '' }
   ];
 
   const insertSetting = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');

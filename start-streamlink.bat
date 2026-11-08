@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 title StreamLink - Personal Movie Streaming Platform
 color 0A
 cd /d "%~dp0"
@@ -8,15 +9,39 @@ echo        🎬 StreamLink - Self-Hosted Personal Streaming
 echo ================================================================
 echo.
 
-:: Check if node_modules exists, install if missing
-if not exist "node_modules\" (
-    echo [INFO] Dependencies not found. Installing packages...
+:: Check Node.js runtime
+where node >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Node.js is not installed or not in your system PATH.
+    echo Please install Node.js (v18+) from https://nodejs.org
+    echo.
+    pause
+    exit /b 1
+)
+
+:: Check if server dependencies (express, etc.) are installed
+if not exist "node_modules\express\" (
+    echo [INFO] Backend packages missing or incomplete. Installing dependencies...
     call npm install
     if errorlevel 1 (
-        echo [ERROR] npm install failed. Please ensure Node.js and npm are installed.
+        echo [ERROR] npm install failed. Please check your internet connection or Node installation.
         pause
         exit /b 1
     )
+    echo [✓] Backend dependencies installed successfully.
+    echo.
+)
+
+:: Check if client production build exists
+if not exist "client\dist\index.html" (
+    echo [INFO] Web client production build missing. Preparing client...
+    if not exist "client\node_modules\" (
+        echo [INFO] Installing frontend dependencies...
+        cd client && call npm install && cd ..
+    )
+    echo [INFO] Building modern web client...
+    cd client && call npm run build && cd ..
+    echo [✓] Web client built successfully.
     echo.
 )
 
@@ -30,4 +55,3 @@ start "" powershell -NoProfile -Command "Start-Sleep -Seconds 2; Start-Process '
 node server/index.js
 
 pause
-

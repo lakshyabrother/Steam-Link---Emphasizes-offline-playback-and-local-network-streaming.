@@ -196,3 +196,4 @@ export default function ProfilesModal({ isOpen, onClose, authFetch, onProfileCha
     </div>
   );
 }
+

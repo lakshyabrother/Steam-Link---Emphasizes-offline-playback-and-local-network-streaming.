@@ -5208,3 +5208,236 @@ label {
   border-radius: 4px;
   vertical-align: middle;
 }
+
+/* ============================================================
+   AUTOMATIC MOVIE ARTWORK & TMDB METADATA SYSTEM STYLES
+   ============================================================ */
+
+.artwork-tools-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  width: 100%;
+}
+
+.tmdb-attribution-note {
+  margin-top: 24px;
+  font-size: 11px;
+  color: #64748B;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 12px;
+}
+
+/* ── TMDB Match Popover Modal ── */
+.tmdb-search-popover-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(8, 8, 12, 0.85);
+  backdrop-filter: blur(16px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: modalFadeIn 0.2s ease;
+}
+
+.tmdb-search-popover-window {
+  width: 90%;
+  max-width: 680px;
+  max-height: 85vh;
+  background: #0F1017;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85), 0 0 40px rgba(139, 92, 246, 0.15);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tmdb-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.tmdb-title-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #F8FAFC;
+}
+
+.tmdb-search-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.tmdb-search-form .input-text-dark {
+  flex: 1;
+}
+
+.tmdb-results-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 200px;
+  max-height: 460px;
+  padding-right: 4px;
+}
+
+.tmdb-candidate-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.2s ease;
+}
+
+.tmdb-candidate-card:hover {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.35);
+}
+
+.candidate-poster-thumb {
+  width: 48px;
+  height: 72px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #141724;
+  flex-shrink: 0;
+}
+
+.candidate-poster-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumb-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748B;
+}
+
+.candidate-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.candidate-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.candidate-title-row h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #F8FAFC;
+  margin: 0;
+}
+
+.candidate-year {
+  font-size: 12px;
+  color: #94A3B8;
+}
+
+.confidence-pill {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.confidence-pill.high {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22C55E;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.confidence-pill.medium {
+  background: rgba(245, 158, 11, 0.15);
+  color: #F59E0B;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.candidate-overview {
+  font-size: 12px;
+  color: #64748B;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.candidate-select-btn {
+  flex-shrink: 0;
+}
+
+.tmdb-no-results {
+  text-align: center;
+  padding: 40px 16px;
+  color: #64748B;
+  font-size: 13px;
+}
+
+/* ── Dashboard TMDB API Key Configuration ── */
+.tmdb-key-config-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+}
+
+.tmdb-key-label-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+  min-width: 280px;
+}
+
+.tmdb-key-label-wrap strong {
+  font-size: 14px;
+  color: #F8FAFC;
+}
+
+.tmdb-key-input-group {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  min-width: 280px;
+}
+
+.tmdb-key-input-group input {
+  flex: 1;
+}
+
+.tmdb-attribution-footer {
+  margin-top: 16px;
+  font-size: 11px;
+  color: #64748B;
+  line-height: 1.5;
+}

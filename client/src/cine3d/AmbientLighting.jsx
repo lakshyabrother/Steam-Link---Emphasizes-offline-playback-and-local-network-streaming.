@@ -20,3 +20,4 @@ export default function AmbientLighting({ activeColor = '#8B5CF6', enabled = tru
     </div>
   );
 }
+

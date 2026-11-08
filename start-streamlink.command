@@ -1,26 +1,28 @@
 #!/usr/bin/env bash
 set -e
-
-# Change to the directory of this script
 cd "$(dirname "$0")"
 
 echo "================================================================"
-echo "        🎬 StreamLink - Personal Movie Streaming Platform"
+echo "       🎬 StreamLink - Self-Hosted Personal Streaming"
 echo "================================================================"
 echo ""
 
-# Check if node_modules exists, install if missing
-if [ ! -d "node_modules" ]; then
-    echo "[*] First-time setup: installing dependencies..."
+if [ ! -d "node_modules/express" ]; then
+    echo "[INFO] Backend dependencies missing. Installing..."
     npm install
 fi
 
-echo "[*] Starting StreamLink Backend on port 5050..."
+if [ ! -f "client/dist/index.html" ]; then
+    echo "[INFO] Client production build missing. Building..."
+    if [ ! -d "client/node_modules" ]; then
+        cd client && npm install && cd ..
+    fi
+    cd client && npm run build && cd ..
+fi
+
+echo "Starting StreamLink Backend on port 5050..."
 echo ""
 
-# Launch default browser in 2 seconds
 (sleep 2 && open "http://localhost:5050") 2>/dev/null &
 
-# Run Node server
 node server/index.js
-

@@ -481,3 +481,4 @@ export default function CinemaLobby3D({ movies = [], onSelectMovie, onPlayMovie,
     </div>
   );
 }
+

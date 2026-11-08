@@ -134,3 +134,4 @@ class PerformanceManager {
 }
 
 export const performanceManager = new PerformanceManager();
+

@@ -13,6 +13,7 @@ export default function LibraryPage({ onSelectMovie, onPlayMovie, authFetch, onO
   const [resolutionFilter, setResolutionFilter] = useState('');
   const [yearFilter, setYearFilter] = useState('');
   const [genreFilter, setGenreFilter] = useState('');
+  const [artworkStatusFilter, setArtworkStatusFilter] = useState('');
   const [watchedFilter, setWatchedFilter] = useState('all'); // 'all' | 'unwatched' | 'watched'
   const [sortBy, setSortBy] = useState('recent');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
@@ -48,6 +49,7 @@ export default function LibraryPage({ onSelectMovie, onPlayMovie, authFetch, onO
     if (resolutionFilter) url += `&resolution=${encodeURIComponent(resolutionFilter)}`;
     if (yearFilter) url += `&year=${encodeURIComponent(yearFilter)}`;
     if (genreFilter) url += `&genre=${encodeURIComponent(genreFilter)}`;
+    if (artworkStatusFilter) url += `&artworkStatus=${encodeURIComponent(artworkStatusFilter)}`;
 
     authFetch(url)
       .then(res => res.json())
@@ -60,7 +62,7 @@ export default function LibraryPage({ onSelectMovie, onPlayMovie, authFetch, onO
 
   useEffect(() => {
     fetchMovies();
-  }, [search, resolutionFilter, yearFilter, genreFilter, sortBy]);
+  }, [search, resolutionFilter, yearFilter, genreFilter, artworkStatusFilter, sortBy]);
 
   // Rescan library
   const handleRescan = async () => {
@@ -104,6 +106,8 @@ export default function LibraryPage({ onSelectMovie, onPlayMovie, authFetch, onO
     setSearch('');
     setResolutionFilter('');
     setYearFilter('');
+    setGenreFilter('');
+    setArtworkStatusFilter('');
     setWatchedFilter('all');
   };
 
@@ -388,6 +392,16 @@ export default function LibraryPage({ onSelectMovie, onPlayMovie, authFetch, onO
               <option value="all">All Status</option>
               <option value="unwatched">Unwatched</option>
               <option value="watched">Watched</option>
+            </select>
+          </div>
+
+          {/* Artwork Status Filter */}
+          <div className="toolbar-select-wrapper">
+            <select value={artworkStatusFilter} onChange={(e) => setArtworkStatusFilter(e.target.value)}>
+              <option value="">All Artwork</option>
+              <option value="missing">Missing Artwork</option>
+              <option value="uncertain">Uncertain Matches</option>
+              <option value="matched">Matched Artwork</option>
             </select>
           </div>
 

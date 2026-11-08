@@ -3,7 +3,8 @@ import { getApiUrl } from '../utils/api.js';
 import {
   Globe, Copy, Check, QrCode, ArrowUpRight, Folder, RefreshCw,
   RotateCw, Play, Square, HardDrive, Users, Shield, UserPlus,
-  Trash2, Download, Upload, X, Activity, Server
+  Trash2, Download, Upload, X, Activity, Server, Sparkles, Key,
+  Layers, Film, CheckCircle2, AlertTriangle, ChevronRight
 } from 'lucide-react';
 import { formatFileSize, formatDuration } from '../components/MovieCard';
 
@@ -13,6 +14,13 @@ export default function DashboardPage({ authFetch, onOpenFolderPicker, onOpenSha
   const [copied, setCopied] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+
+  // TMDB Artwork & Metadata State
+  const [metaStatus, setMetaStatus] = useState({ total: 0, matched: 0, uncertain: 0, missing: 0, hasApiKey: false });
+  const [tmdbKeyInput, setTmdbKeyInput] = useState('');
+  const [keySavedMsg, setKeySavedMsg] = useState('');
+  const [batchRunning, setBatchRunning] = useState(false);
+  const [batchMsg, setBatchMsg] = useState('');
 
   // New viewer form state
   const [newUsername, setNewUsername] = useState('');
@@ -36,12 +44,71 @@ export default function DashboardPage({ authFetch, onOpenFolderPicker, onOpenSha
       .catch(() => {});
   };
 
+  const fetchMetaStatus = () => {
+    authFetch('/api/movies/metadata/status')
+      .then(res => res.json())
+      .then(data => setMetaStatus(data))
+      .catch(() => {});
+  };
+
+  const fetchSettings = () => {
+    authFetch('/api/admin/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data.settings?.tmdb_api_key) {
+          setTmdbKeyInput(data.settings.tmdb_api_key);
+        }
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     fetchStats();
     fetchUsers();
+    fetchMetaStatus();
+    fetchSettings();
     const interval = setInterval(fetchStats, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleSaveTmdbKey = async (e) => {
+    e.preventDefault();
+    setKeySavedMsg('');
+    try {
+      const res = await authFetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tmdb_api_key: tmdbKeyInput.trim() })
+      });
+      if (res.ok) {
+        setKeySavedMsg('TMDB API Key saved successfully!');
+        fetchMetaStatus();
+        setTimeout(() => setKeySavedMsg(''), 3000);
+      }
+    } catch (err) {
+      setKeySavedMsg('Failed to save API key');
+    }
+  };
+
+  const handleBatchAutoFetch = async () => {
+    setBatchRunning(true);
+    setBatchMsg('Recognizing movies and caching high-res artwork...');
+    try {
+      const res = await authFetch('/api/movies/batch/recognize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: 40 })
+      });
+      const data = await res.json();
+      setBatchMsg(data.message || 'Auto-recognition finished.');
+      fetchMetaStatus();
+      fetchStats();
+    } catch (err) {
+      setBatchMsg(`Error: ${err.message}`);
+    } finally {
+      setBatchRunning(false);
+    }
+  };
 
   // Server control actions
   const handleServerAction = async (action) => {
@@ -461,6 +528,96 @@ export default function DashboardPage({ authFetch, onOpenFolderPicker, onOpenSha
                 <input type="file" accept=".json" onChange={handleRestoreFile} style={{ display: 'none' }} />
               </label>
             </div>
+          </div>
+        </div>
+
+        {/* ── Artwork & TMDB Metadata Hub Panel ── */}
+        <div className="dash-panel" style={{ marginTop: '24px' }}>
+          <div className="dash-panel-header">
+            <div className="dash-panel-title-group">
+              <Sparkles size={20} className="dash-icon text-cyan" />
+              <div>
+                <h2 className="dash-panel-heading">Automatic Movie Artwork & Metadata System</h2>
+                <p className="dash-panel-sub">
+                  TMDB movie recognition, vertical poster & wide backdrop caching, and metadata matching.
+                </p>
+              </div>
+            </div>
+            <div className="dash-panel-actions">
+              <button
+                className="btn-primary"
+                onClick={handleBatchAutoFetch}
+                disabled={batchRunning || !metaStatus.hasApiKey}
+                title={metaStatus.hasApiKey ? 'Scan entire library and auto-fetch missing posters & backdrops' : 'Enter TMDB API Key below first'}
+              >
+                <RefreshCw size={14} className={batchRunning ? 'rescan-spinning' : ''} />
+                <span>{batchRunning ? 'Fetching Artwork...' : 'Auto-Fetch All Artwork'}</span>
+              </button>
+            </div>
+          </div>
+
+          {batchMsg && (
+            <div className="dash-status-alert info" style={{ marginBottom: '18px' }}>
+              <Sparkles size={15} className="text-cyan pulse-icon" />
+              <span>{batchMsg}</span>
+            </div>
+          )}
+
+          {/* Metadata Statistics Row */}
+          <div className="dash-metrics-grid" style={{ marginBottom: '20px' }}>
+            <div className="dash-metric-item">
+              <span className="dash-metric-label">Total Titles</span>
+              <span className="dash-metric-number">{metaStatus.total}</span>
+            </div>
+            <div className="dash-metric-item">
+              <span className="dash-metric-label">Artwork Matched</span>
+              <span className="dash-metric-number" style={{ color: '#22C55E' }}>{metaStatus.matched}</span>
+            </div>
+            <div className="dash-metric-item">
+              <span className="dash-metric-label">Uncertain Matches</span>
+              <span className="dash-metric-number" style={{ color: '#F59E0B' }}>{metaStatus.uncertain}</span>
+            </div>
+            <div className="dash-metric-item">
+              <span className="dash-metric-label">Missing Artwork</span>
+              <span className="dash-metric-number" style={{ color: '#EF4444' }}>{metaStatus.missing}</span>
+            </div>
+          </div>
+
+          {/* TMDB API Key Configuration Input */}
+          <form onSubmit={handleSaveTmdbKey} className="tmdb-key-config-row">
+            <div className="tmdb-key-label-wrap">
+              <Key size={16} className="text-cyan" />
+              <div>
+                <strong>The Movie Database (TMDB) API Key:</strong>
+                <p className="text-xs text-dim">
+                  Used by backend server to automatically query posters, backdrops, and descriptions. Your key is stored securely on the host PC and never exposed to client browsers.
+                </p>
+              </div>
+            </div>
+
+            <div className="tmdb-key-input-group">
+              <input
+                type="text"
+                className="input-text-dark"
+                placeholder="Paste your TMDB v3 API Key (e.g. a1b2c3d4e5...)"
+                value={tmdbKeyInput}
+                onChange={e => setTmdbKeyInput(e.target.value)}
+              />
+              <button type="submit" className="btn-secondary">Save Key</button>
+            </div>
+          </form>
+
+          {keySavedMsg && (
+            <div className="dash-form-success" style={{ marginTop: '10px' }}>
+              <CheckCircle2 size={14} />
+              <span>{keySavedMsg}</span>
+            </div>
+          )}
+
+          <div className="tmdb-attribution-footer">
+            <span>
+              This product uses the TMDB API but is not endorsed or certified by TMDB. Movie posters and cinematic artwork remain copyright of their respective production studios.
+            </span>
           </div>
         </div>
       </div>

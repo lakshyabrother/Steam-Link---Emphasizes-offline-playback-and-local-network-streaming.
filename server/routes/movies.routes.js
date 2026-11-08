@@ -5,6 +5,14 @@ import { getDatabase, addLog } from '../database.js';
 import { requireAuth } from '../auth.js';
 import { handleStreamRequest, convertSrtToVtt } from '../streamer.js';
 import { CONFIG } from '../config.js';
+import {
+  getTmdbApiKey,
+  searchTmdbMovies,
+  autoRecognizeMovie,
+  applyManualTmdbMatch,
+  batchAutoRecognizeLibrary,
+  downloadAndCacheArtwork
+} from '../metadata.js';
 
 const router = express.Router();
 
@@ -172,7 +180,7 @@ function generateMovieSvgBackdrop(title, year, resolution) {
 
 // List Movies with search, filter, and sorting
 router.get('/', requireAuth, (req, res) => {
-  const { q, year, resolution, genre, sort } = req.query;
+  const { q, year, resolution, genre, artworkStatus, sort } = req.query;
   const db = getDatabase();
   const userId = req.user.id;
 
@@ -243,6 +251,17 @@ router.get('/', requireAuth, (req, res) => {
 
   if (genre && genre !== 'All') {
     mapped = mapped.filter(m => m.genre.toLowerCase() === genre.toLowerCase());
+  }
+
+  if (artworkStatus === 'missing') {
+    mapped = mapped.filter(m => {
+      const p = path.join(CONFIG.POSTERS_DIR, `${m.id}_poster.jpg`);
+      return !fs.existsSync(p) || m.match_status === 'none';
+    });
+  } else if (artworkStatus === 'uncertain') {
+    mapped = mapped.filter(m => m.match_status === 'uncertain');
+  } else if (artworkStatus === 'matched') {
+    mapped = mapped.filter(m => m.match_status === 'matched' || m.match_status === 'manual');
   }
 
   res.json({ movies: mapped });
@@ -686,12 +705,102 @@ async function tryTmdbLookup(movieId, title, year) {
   }
 }
 
+// Artwork & Metadata Library Health Status
+router.get('/metadata/status', requireAuth, (req, res) => {
+  const db = getDatabase();
+  const total = db.prepare('SELECT COUNT(*) as cnt FROM movies').get().cnt;
+  const matched = db.prepare("SELECT COUNT(*) as cnt FROM movies WHERE match_status IN ('matched', 'manual')").get().cnt;
+  const uncertain = db.prepare("SELECT COUNT(*) as cnt FROM movies WHERE match_status = 'uncertain'").get().cnt;
+  const missing = db.prepare("SELECT COUNT(*) as cnt FROM movies WHERE match_status = 'none' OR (poster_url = '' AND backdrop_url = '')").get().cnt;
+  const apiKey = getTmdbApiKey();
+
+  res.json({
+    total,
+    matched,
+    uncertain,
+    missing,
+    hasApiKey: Boolean(apiKey)
+  });
+});
+
+// Batch auto-recognize all movies in library
+router.post('/batch/recognize', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin permission required' });
+  }
+  const apiKey = getTmdbApiKey();
+  if (!apiKey) {
+    return res.status(400).json({ error: 'No TMDB API key configured. Please enter your API key in Dashboard settings.' });
+  }
+
+  const limit = parseInt(req.body.limit, 10) || 30;
+  const results = await batchAutoRecognizeLibrary(limit);
+  res.json({
+    message: `Batch recognition finished. Matched: ${results.matched}, Uncertain: ${results.uncertain}, Skipped/Unmatched: ${results.failed}`,
+    results
+  });
+});
+
+// Search TMDB for movie matches
+router.get('/:id/tmdb-search', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin permission required' });
+  }
+  const movieId = parseInt(req.params.id, 10);
+  const db = getDatabase();
+  const movie = db.prepare('SELECT clean_title, year FROM movies WHERE id = ?').get(movieId);
+  if (!movie) {
+    return res.status(404).json({ error: 'Movie not found' });
+  }
+
+  const searchTitle = req.query.q || movie.clean_title;
+  const searchYear = req.query.year || movie.year || null;
+
+  const result = await searchTmdbMovies(searchTitle, searchYear);
+  res.json(result);
+});
+
+// Manually apply a selected TMDB match
+router.post('/:id/tmdb-match', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin permission required' });
+  }
+  const movieId = parseInt(req.params.id, 10);
+  const { tmdbId } = req.body;
+  if (!tmdbId) {
+    return res.status(400).json({ error: 'tmdbId is required' });
+  }
+
+  const result = await applyManualTmdbMatch(movieId, parseInt(tmdbId, 10));
+  if (!result.success) {
+    return res.status(400).json({ error: result.error || 'Failed to apply TMDB match' });
+  }
+
+  res.json({
+    message: 'TMDB match applied successfully',
+    movie: result.movie
+  });
+});
+
+// Force refresh movie metadata and artwork from TMDB
+router.post('/:id/refresh-metadata', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin permission required' });
+  }
+  const movieId = parseInt(req.params.id, 10);
+  const result = await autoRecognizeMovie(movieId, true);
+  res.json({
+    message: result.success ? 'Metadata and artwork refreshed successfully' : (result.message || 'Lookup complete'),
+    result
+  });
+});
+
 // Movie Poster (Local file, cached poster, or cinematic SVG placeholder)
 router.get('/:id/poster', async (req, res) => {
   const movieId = parseInt(req.params.id, 10);
   const db = getDatabase();
 
-  const movie = db.prepare('SELECT file_path, clean_title, year, resolution, poster_url FROM movies WHERE id = ?').get(movieId);
+  const movie = db.prepare('SELECT file_path, clean_title, year, resolution, poster_url, match_status FROM movies WHERE id = ?').get(movieId);
   if (!movie) {
     const fallbackSvg = generateMovieSvgPoster('Movie', '', 'HD');
     res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
@@ -726,6 +835,9 @@ router.get('/:id/poster', async (req, res) => {
 
 // Manually assign or replace a movie poster
 router.post('/:id/poster', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin permission required' });
+  }
   const movieId = parseInt(req.params.id, 10);
   const { posterUrl } = req.body;
   const db = getDatabase();
@@ -744,14 +856,14 @@ router.post('/:id/poster', requireAuth, async (req, res) => {
 
   try {
     if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
-      const ok = await downloadAndCacheImage(cleanUrl, destPoster);
+      const ok = await downloadAndCacheArtwork(cleanUrl, destPoster, true);
       if (!ok) {
         return res.status(400).json({ error: 'Unable to download image from the provided URL' });
       }
-      db.prepare('UPDATE movies SET poster_url = ? WHERE id = ?').run(destPoster, movieId);
+      db.prepare("UPDATE movies SET poster_url = ?, match_status = CASE WHEN match_status = 'none' THEN 'manual' ELSE match_status END WHERE id = ?").run(destPoster, movieId);
     } else if (fs.existsSync(cleanUrl)) {
       await fs.promises.copyFile(cleanUrl, destPoster);
-      db.prepare('UPDATE movies SET poster_url = ? WHERE id = ?').run(destPoster, movieId);
+      db.prepare("UPDATE movies SET poster_url = ?, match_status = CASE WHEN match_status = 'none' THEN 'manual' ELSE match_status END WHERE id = ?").run(destPoster, movieId);
     } else {
       return res.status(400).json({ error: 'Invalid URL or local file path not found' });
     }
@@ -765,31 +877,86 @@ router.post('/:id/poster', requireAuth, async (req, res) => {
   }
 });
 
+// Manually assign or replace a movie backdrop
+router.post('/:id/backdrop', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin permission required' });
+  }
+  const movieId = parseInt(req.params.id, 10);
+  const { backdropUrl } = req.body;
+  const db = getDatabase();
+
+  const movie = db.prepare('SELECT id, file_path, clean_title FROM movies WHERE id = ?').get(movieId);
+  if (!movie) {
+    return res.status(404).json({ error: 'Movie not found' });
+  }
+
+  if (!backdropUrl || !backdropUrl.trim()) {
+    return res.status(400).json({ error: 'Backdrop URL is required' });
+  }
+
+  const cleanUrl = backdropUrl.trim();
+  const destBackdrop = path.join(CONFIG.BACKDROPS_DIR, `${movieId}_backdrop.jpg`);
+
+  try {
+    if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+      const ok = await downloadAndCacheArtwork(cleanUrl, destBackdrop, true);
+      if (!ok) {
+        return res.status(400).json({ error: 'Unable to download image from the provided URL' });
+      }
+      db.prepare("UPDATE movies SET backdrop_url = ? WHERE id = ?").run(destBackdrop, movieId);
+    } else if (fs.existsSync(cleanUrl)) {
+      await fs.promises.copyFile(cleanUrl, destBackdrop);
+      db.prepare("UPDATE movies SET backdrop_url = ? WHERE id = ?").run(destBackdrop, movieId);
+    } else {
+      return res.status(400).json({ error: 'Invalid URL or local file path not found' });
+    }
+
+    res.json({
+      message: 'Backdrop updated successfully',
+      backdropUrl: `/api/movies/${movieId}/backdrop?t=${Date.now()}`
+    });
+  } catch (err) {
+    res.status(500).json({ error: `Failed to update backdrop: ${err.message}` });
+  }
+});
+
 // Movie 16:9 Widescreen Backdrop (Local image, cached backdrop, or cinematic SVG)
 router.get('/:id/backdrop', (req, res) => {
   const movieId = parseInt(req.params.id, 10);
   const db = getDatabase();
 
-  const movie = db.prepare('SELECT file_path, clean_title, year, resolution FROM movies WHERE id = ?').get(movieId);
+  const movie = db.prepare('SELECT file_path, clean_title, year, resolution, backdrop_url FROM movies WHERE id = ?').get(movieId);
   if (!movie) {
     const fallbackSvg = generateMovieSvgBackdrop('Movie', '', 'HD');
     res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
     return res.end(fallbackSvg);
   }
 
-  // 1. Check cached backdrop on disk
-  const cachedBackdrop = path.join(CONFIG.POSTERS_DIR, `${movieId}_backdrop.jpg`);
+  // 1. Check cached backdrop in BACKDROPS_DIR
+  const cachedBackdrop = path.join(CONFIG.BACKDROPS_DIR, `${movieId}_backdrop.jpg`);
   if (fs.existsSync(cachedBackdrop)) {
     return res.sendFile(cachedBackdrop);
   }
 
-  // 2. Check for local backdrop in movie folder
+  // 2. Check legacy cached backdrop in POSTERS_DIR
+  const legacyBackdrop = path.join(CONFIG.POSTERS_DIR, `${movieId}_backdrop.jpg`);
+  if (fs.existsSync(legacyBackdrop)) {
+    return res.sendFile(legacyBackdrop);
+  }
+
+  // 3. Check movie.backdrop_url if local path
+  if (movie.backdrop_url && fs.existsSync(movie.backdrop_url)) {
+    return res.sendFile(movie.backdrop_url);
+  }
+
+  // 4. Check for local backdrop in movie folder
   const localArt = findLocalArtwork(movie.file_path, 'backdrop');
   if (localArt) {
     return res.sendFile(localArt);
   }
 
-  // 3. Fallback to widescreen SVG backdrop
+  // 5. Fallback to widescreen SVG backdrop
   const svg = generateMovieSvgBackdrop(movie.clean_title, movie.year, movie.resolution);
   res.writeHead(200, {
     'Content-Type': 'image/svg+xml',

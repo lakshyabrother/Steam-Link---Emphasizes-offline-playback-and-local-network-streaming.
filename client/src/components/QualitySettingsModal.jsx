@@ -131,3 +131,4 @@ export default function QualitySettingsModal({ isOpen, onClose, ambientEnabled, 
     </div>
   );
 }
+
